@@ -37,7 +37,7 @@ class DataLoader {
   bool next(gtsam::Pose3* odom_pose, gtsam::Pose3* det_pose);
 
  private:
-  std::map<int, gtsam::Pose3> odom_map_, det_map_;
+  std::map<double, gtsam::Pose3> odom_map_, det_map_;
 };
 
 DataLoader::DataLoader(const std::string& odom_file,
@@ -56,21 +56,11 @@ DataLoader::DataLoader(const std::string& odom_file,
 
   // Read odometry
   double t, x, y, z, qx, qy, qz, qw;
-  int count = 0;
-  gtsam::Pose3 pose_prev;
   while (odom_data >> t >> x >> y >> z >> qx >> qy >> qz >> qw) {
-    if (count == 0) {
-      pose_prev = gtsam::Pose3(gtsam::Rot3::Quaternion(qw, qx, qy, qz),
-                               gtsam::Point3(x, y, z));
-
-      odom_map_.insert({t, pose_prev});
-      count++;
-    }
     gtsam::Pose3 pose(gtsam::Rot3::Quaternion(qw, qx, qy, qz),
                       gtsam::Point3(x, y, z));
     // key=t represents the odometry btw previous time step and t
-    odom_map_.insert({t, pose_prev.inverse() * pose});
-    pose_prev = pose;
+    odom_map_.insert({t, pose});
   }
 
   // Read detections
@@ -82,7 +72,7 @@ DataLoader::DataLoader(const std::string& odom_file,
 
   odom_data.close();
   det_data.close();
-};
+}
 
 bool DataLoader::next(gtsam::Pose3* odom_pose, gtsam::Pose3* det_pose) {
   if (odom_map_.empty()) return false;
@@ -102,4 +92,4 @@ bool DataLoader::next(gtsam::Pose3* odom_pose, gtsam::Pose3* det_pose) {
     det_pose = nullptr;
   }
   return true;
-};
+}
