@@ -28,7 +28,8 @@ int main(int argc, char** argv) {
   // prior factor noise order:rpyxyz
   gtsam::noiseModel::Diagonal::shared_ptr prior_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
-          (gtsam::Vector(6) << 0.01, 0.01, 0.01, 0.01, 0.01, 0.01).finished());
+          (gtsam::Vector(6) << 0.001, 0.001, 0.001, 0.001, 0.001, 0.001)
+              .finished());
   // odom betfactor noise order:rpyxyz
   gtsam::noiseModel::Diagonal::shared_ptr odom_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
@@ -52,8 +53,8 @@ int main(int argc, char** argv) {
           odom_noise));
     }
 
-    // Check whether &det is a nullptr (which means no detection at this time)
-    if (&det) {
+    // det = Pose3() means there's no detection at this time
+    if ((!det.equals(gtsam::Pose3()))) {
       // If this is the first observation of a landmark, initialize it!
       if (lm_ids.find(1) == lm_ids.end()) {
         init_values.insert(gtsam::Symbol('l', 1), pose * det);
@@ -66,8 +67,18 @@ int main(int argc, char** argv) {
 
     prev_pose = pose;
     init_values.insert(gtsam::Symbol('x', count), pose);
+
     count++;
   }
+
+  // Print large factor errors
+  for (const auto& fac : graph) {
+    if (fac->error(init_values) > 5) {
+      fac->printKeys();
+      cout << "; error: " << fac->error(init_values) << endl;
+    }
+  }
+
   // Solve the optimization
   gtsam::GaussNewtonParams params;
   params.setVerbosity("ERROR");
@@ -77,7 +88,8 @@ int main(int argc, char** argv) {
       gtsam::GaussNewtonOptimizer(graph, init_values, params).optimize();
   gtsam::Pose3 lm_result = result.at<gtsam::Pose3>(gtsam::Symbol('l', 1).key());
   std::cout << lm_result << endl;
-  std::cout << result.at<gtsam::Pose3>(gtsam::Symbol('x', 1110).key()) << endl;
+  // std::cout << result.at<gtsam::Pose3>(gtsam::Symbol('x', 1110).key()) <<
+  // endl;
 
   return 0;
 }
