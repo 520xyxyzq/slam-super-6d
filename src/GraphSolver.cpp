@@ -12,6 +12,7 @@
 #include <gtsam/slam/PriorFactor.h>
 
 #include "../include/DataLoader.h"
+#include "../include/SmartMaxMixtureFactor.h"
 
 // TODO(ziqi): generalize to multi-object in each scene
 int main(int argc, char** argv) {
@@ -28,8 +29,7 @@ int main(int argc, char** argv) {
   // prior factor noise order:rpyxyz
   gtsam::noiseModel::Diagonal::shared_ptr prior_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
-          (gtsam::Vector(6) << 0.001, 0.001, 0.001, 0.001, 0.001, 0.001)
-              .finished());
+          (gtsam::Vector(6) << 0.01, 0.01, 0.01, 0.01, 0.01, 0.01).finished());
   // odom betfactor noise order:rpyxyz
   gtsam::noiseModel::Diagonal::shared_ptr odom_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
@@ -38,6 +38,10 @@ int main(int argc, char** argv) {
   gtsam::noiseModel::Diagonal::shared_ptr det_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
           (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
+  // null hypothesis noise model
+  gtsam::noiseModel::Diagonal::shared_ptr nh_noise =
+      gtsam::noiseModel::Diagonal::Sigmas(
+          (gtsam::Vector(6) << 100, 100, 100, 100, 100, 100).finished());
 
   gtsam::Pose3 pose, det, prev_pose;
   size_t count = 0;
@@ -61,8 +65,16 @@ int main(int argc, char** argv) {
         lm_ids.insert(1);
       }
       // TODO(ziqi): lm id hard-coded for now
-      graph.add(gtsam::BetweenFactor<gtsam::Pose3>(
+      std::vector<gtsam::Key> mixture_keys = {gtsam::Symbol('x', count),
+                                              gtsam::Symbol('l', 1)};
+      std::vector<double> mixture_weights = {0.9, 0.1};
+      std::vector<gtsam::BetweenFactor<gtsam::Pose3>> mixture_comps;
+      mixture_comps.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
           gtsam::Symbol('x', count), gtsam::Symbol('l', 1), det, det_noise));
+      mixture_comps.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
+          gtsam::Symbol('x', count), gtsam::Symbol('l', 1), det, nh_noise));
+      graph.add(MaxMixtureFactor<gtsam::BetweenFactor<gtsam::Pose3>>{
+          mixture_keys, mixture_comps, mixture_weights});
     }
 
     prev_pose = pose;
@@ -75,7 +87,7 @@ int main(int argc, char** argv) {
   for (const auto& fac : graph) {
     if (fac->error(init_values) > 5) {
       fac->printKeys();
-      cout << "; error: " << fac->error(init_values) << endl;
+      cout << "error: " << fac->error(init_values) << endl;
     }
   }
 
@@ -90,6 +102,19 @@ int main(int argc, char** argv) {
   std::cout << lm_result << endl;
   // std::cout << result.at<gtsam::Pose3>(gtsam::Symbol('x', 1110).key()) <<
   // endl;
+
+  for (const auto& fac : graph) {
+    if (fac->find(gtsam::Symbol('l', 1).key()) != fac->end()) {
+      int id =
+          dynamic_cast<MaxMixtureFactor<gtsam::BetweenFactor<gtsam::Pose3>>&>(
+              *fac)
+              .getComponent(result);
+      if (id == 1) {
+        fac->printKeys();
+        cout << "id: " << fac->error(result) << endl;
+      }
+    }
+  }
 
   return 0;
 }

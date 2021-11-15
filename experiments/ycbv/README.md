@@ -4,12 +4,13 @@ The automated process and results of running RGBD ORB-SLAM3 (in `odom`) and Nvid
 ## Dependencies
 - [evo](https://github.com/MichaelGrupp/evo)
 - [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) (optional, if you want to rerun the experiment)
+- [DOPE](https://github.com/NVlabs/Deep_Object_Pose) (optional, if you want to rerun the experiment)
 
 ## How to run the experiments
-- Run ORB-SLAM3 on YCB videos  
-`./ycb_orbslam.sh $path/to/test/folder $path/to/ycb-v/data $path/to/ORB_SLAM3`  
+- Run ORB-SLAM3 on YCB videos
+`./ycb_orbslam.sh $path/to/test/folder $path/to/ycb-v/data $path/to/ORB_SLAM3`
 (This process could take ~6 hours)
 
-- Run Nvidia DOPE on YCB videos  
-`./ycb_dope.sh $path/to/test/folder $path/to/dope/folder`  
+- Run Nvidia DOPE on YCB videos
+`./ycb_dope.sh $path/to/test/folder $path/to/dope/folder`
 (This process could take ~2 hours)

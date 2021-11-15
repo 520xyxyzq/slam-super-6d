@@ -104,6 +104,25 @@ class MaxMixtureFactor : public gtsam::NonlinearFactor {
     return factors_[idx_min].keys();
   }
 
+  /**
+   * @brief Get the id of the mixture component for given Values of latent
+   * variables
+   * @param[in] x values of latent variables
+   * @return mixture component id
+   */
+  int getComponent(const gtsam::Values& x) {
+    double min_error = std::numeric_limits<double>::infinity();
+    int idx_min = -1;
+    for (int i = 0; i < factors_.size(); i++) {
+      double error = factors_[i].error(x) - log_weights_[i];
+      if (error < min_error) {
+        min_error = error;
+        idx_min = i;
+      }
+    }
+    return idx_min;
+  }
+
   void updateWeights(const std::vector<double>& weights) {
     if (weights.size() != log_weights_.size()) {
       std::cerr << "Attempted to update weights with incorrectly sized vector."
