@@ -5,8 +5,8 @@ find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
 
 
-add_executable(test_load src/test.cpp)
+add_executable(solve src/GraphSolver.cpp)
 
-target_link_libraries(test_load gtsam)
+target_link_libraries(solve gtsam)
 
-target_include_directories(test_load PUBLIC ${GTSAM_INCLUDE_DIR})
+target_include_directories(solve PUBLIC ${GTSAM_INCLUDE_DIR})
