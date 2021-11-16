@@ -5,14 +5,11 @@
  * Copyright 2021 The Ambitious Folks of the MRG
  */
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Symbol.h>
-#include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include "../include/DataLoader.h"
-#include "../include/SmartMaxMixtureFactor.h"
+#include "../include/DataSaver.h"
 
 // TODO(ziqi): generalize to multi-object in each scene
 int main(int argc, char** argv) {
@@ -57,7 +54,7 @@ int main(int argc, char** argv) {
           odom_noise));
     }
 
-    // det = Pose3() means there's no detection at this time
+    // NOTE: det = Pose3() means there's no detection at this time
     if ((!det.equals(gtsam::Pose3()))) {
       // If this is the first observation of a landmark, initialize it!
       if (lm_ids.find(1) == lm_ids.end()) {
@@ -83,13 +80,13 @@ int main(int argc, char** argv) {
     count++;
   }
 
-  // Print large factor errors
-  for (const auto& fac : graph) {
-    if (fac->error(init_values) > 5) {
-      fac->printKeys();
-      cout << "error: " << fac->error(init_values) << endl;
-    }
-  }
+  // Print large factor errors for initial values
+  // for (const auto& fac : graph) {
+  //   if (fac->error(init_values) > 5) {
+  //     fac->printKeys();
+  //     cout << "error: " << fac->error(init_values) << endl;
+  //   }
+  // }
 
   // Solve the optimization
   gtsam::GaussNewtonParams params;
@@ -111,10 +108,13 @@ int main(int argc, char** argv) {
               .getComponent(result);
       if (id == 1) {
         fac->printKeys();
-        cout << "id: " << fac->error(result) << endl;
+        cout << "error: " << fac->error(result) << endl;
       }
     }
   }
 
+  DataSaver saver(graph, result);
+  saver.computePoses();
+  cout << "Done" << endl;
   return 0;
 }
