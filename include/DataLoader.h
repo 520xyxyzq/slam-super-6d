@@ -68,7 +68,7 @@ DataLoader::DataLoader(const std::string& odom_file,
     // Skip all zero rows, at which time step there's no detection
     if (x == 0 && y == 0 && z == 0 && qx == 0 && qy == 0 && qz == 0 &&
         qw == 0) {
-      cout << t << endl;
+      // std::cout << t << std::endl;
       continue;
     }
     gtsam::Pose3 pose(gtsam::Rot3::Quaternion(qw, qx, qy, qz),

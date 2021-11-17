@@ -29,9 +29,9 @@ class DataSaver {
 
   /**
    * @brief Compute the relative object poses from the result
-   * @return  relative poses
+   * @param[in] cam2odom Camera to odom transformation
    */
-  void computePoses();
+  void computePoses(gtsam::Pose3 cam2odom);
 
   /**
    * @brief Check whether an object's centroid is in image
@@ -92,7 +92,7 @@ bool DataSaver::isInImage(const gtsam::Pose3 rel_pose) {
   }
 }
 
-void DataSaver::computePoses() {
+void DataSaver::computePoses(gtsam::Pose3 cam2odom) {
   // Filter out landmark and pose result values
   gtsam::Values lm_values =
       result_.filter<gtsam::Pose3>(DataSaver::isLandmarkKey);
@@ -106,6 +106,7 @@ void DataSaver::computePoses() {
     // for each robot pose
     for (auto const &pose_var : pose_values) {
       gtsam::Pose3 rel_pose =
+          cam2odom.inverse() *
           pose_values.at<gtsam::Pose3>(pose_var.key).inverse() *
           lm_values.at<gtsam::Pose3>(lm_var.key);
       if (isInImage(rel_pose)) {  // Cheirality check

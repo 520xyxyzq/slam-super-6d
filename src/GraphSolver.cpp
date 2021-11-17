@@ -40,6 +40,13 @@ int main(int argc, char** argv) {
       gtsam::noiseModel::Diagonal::Sigmas(
           (gtsam::Vector(6) << 100, 100, 100, 100, 100, 100).finished());
 
+  // Transformation of the camera wrt the robot
+  // Used to correct the odom coord. frame if it's not z out x right y down
+  std::vector<double> cam2robot_vec = {1, 0, 0, 0, 0, 1, 0, 0,
+                                       0, 0, 1, 0, 0, 0, 0, 1};
+  Eigen::Matrix4d cam2robot_eig(cam2robot_vec.data());
+  gtsam::Pose3 cam2robot(cam2robot_eig.transpose());
+
   gtsam::Pose3 pose, det, prev_pose;
   size_t count = 0;
   std::set<size_t> lm_ids;
@@ -58,7 +65,7 @@ int main(int argc, char** argv) {
     if ((!det.equals(gtsam::Pose3()))) {
       // If this is the first observation of a landmark, initialize it!
       if (lm_ids.find(1) == lm_ids.end()) {
-        init_values.insert(gtsam::Symbol('l', 1), pose * det);
+        init_values.insert(gtsam::Symbol('l', 1), pose * cam2robot * det);
         lm_ids.insert(1);
       }
       // TODO(ziqi): lm id hard-coded for now
@@ -67,9 +74,11 @@ int main(int argc, char** argv) {
       std::vector<double> mixture_weights = {0.9, 0.1};
       std::vector<gtsam::BetweenFactor<gtsam::Pose3>> mixture_comps;
       mixture_comps.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-          gtsam::Symbol('x', count), gtsam::Symbol('l', 1), det, det_noise));
+          gtsam::Symbol('x', count), gtsam::Symbol('l', 1), cam2robot * det,
+          det_noise));
       mixture_comps.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-          gtsam::Symbol('x', count), gtsam::Symbol('l', 1), det, nh_noise));
+          gtsam::Symbol('x', count), gtsam::Symbol('l', 1), cam2robot * det,
+          nh_noise));
       graph.add(MaxMixtureFactor<gtsam::BetweenFactor<gtsam::Pose3>>{
           mixture_keys, mixture_comps, mixture_weights});
     }
@@ -114,7 +123,7 @@ int main(int argc, char** argv) {
   }
 
   DataSaver saver(graph, result);
-  saver.computePoses();
+  saver.computePoses(cam2robot);
   cout << "Done" << endl;
   return 0;
 }
