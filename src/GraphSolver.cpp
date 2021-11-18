@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   // detection betfactor noise order:rpyxyz
   gtsam::noiseModel::Diagonal::shared_ptr det_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
-          (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
+          (gtsam::Vector(6) << 0.5, 0.5, 0.5, 0.5, 0.5, 0.5).finished());
   // null hypothesis noise model
   gtsam::noiseModel::Diagonal::shared_ptr nh_noise =
       gtsam::noiseModel::Diagonal::Sigmas(
@@ -123,7 +123,8 @@ int main(int argc, char** argv) {
   }
 
   DataSaver saver(graph, result);
-  saver.computePoses(cam2robot);
+  saver.computeDets("/home/ziqi/Desktop/0001.txt", cam2robot);
+  saver.computePoses("/home/ziqi/Desktop/0001_poses.txt");
   cout << "Done" << endl;
   return 0;
 }

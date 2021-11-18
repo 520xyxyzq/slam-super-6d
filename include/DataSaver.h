@@ -14,6 +14,7 @@
 #include <gtsam/slam/ProjectionFactor.h>
 
 #include <fstream>
+#include <string>
 #include <utility>
 
 #include "SmartMaxMixtureFactor.h"
@@ -28,10 +29,19 @@ class DataSaver {
             const gtsam::Values &result);
 
   /**
-   * @brief Compute the relative object poses from the result
+   * @brief Compute the object detections from the result
+   * @param[in] det_file Path to the result file
    * @param[in] cam2odom Camera to odom transformation
+   * TODO(ziqi): should take multi file names for multi objects
    */
-  void computePoses(gtsam::Pose3 cam2odom);
+  void computeDets(std::string det_file, gtsam::Pose3 cam2odom);
+
+  /**
+   * @brief Extract poses from the result
+   * @param[in] pose_file Path to the result file
+   * @param[in] fps FPS (make this consistent to other files)
+   */
+  void computePoses(std::string pose_file);
 
   /**
    * @brief Check whether an object's centroid is in image
@@ -62,6 +72,7 @@ class DataSaver {
   gtsam::Values result_;
   gtsam::Cal3_S2::shared_ptr K_;
   std::pair<int, int> img_dim_;
+  double fps_;
 };
 
 DataSaver::DataSaver(const gtsam::NonlinearFactorGraph &graph,
@@ -71,12 +82,13 @@ DataSaver::DataSaver(const gtsam::NonlinearFactorGraph &graph,
   K_ = gtsam::Cal3_S2::shared_ptr(
       new gtsam::Cal3_S2(1066.778, 1067.487, 0, 312.9869, 241.3109));
   img_dim_ = {480, 640};
+  // FPS of odometry (should make this consistent with other files)
+  fps_ = 10.0;
 }
 
 bool DataSaver::isInImage(const gtsam::Pose3 rel_pose) {
   // TODO(ziqi): Use cheirality check by gtsam to see whether obj center in img
   // TODO(ziqi): Find transform from pose Origin to object centroid
-  // TODO(ziqi): no sure whether the camera pose is passed in correctly
   gtsam::PinholeCamera<gtsam::Cal3_S2> cam(gtsam::Pose3(), *K_);
   try {
     // TODO(ziqi): Check if the obj pose's origin is at center
@@ -92,7 +104,7 @@ bool DataSaver::isInImage(const gtsam::Pose3 rel_pose) {
   }
 }
 
-void DataSaver::computePoses(gtsam::Pose3 cam2odom) {
+void DataSaver::computeDets(std::string det_file, gtsam::Pose3 cam2odom) {
   // Filter out landmark and pose result values
   gtsam::Values lm_values =
       result_.filter<gtsam::Pose3>(DataSaver::isLandmarkKey);
@@ -101,7 +113,7 @@ void DataSaver::computePoses(gtsam::Pose3 cam2odom) {
   // For each landmark variable compute relative pose
   for (auto const &lm_var : lm_values) {
     ofstream result_file;
-    result_file.open("/home/ziqi/Desktop/0001.txt");
+    result_file.open(det_file);
     result_file.precision(12);
     // for each robot pose
     for (auto const &pose_var : pose_values) {
@@ -112,11 +124,30 @@ void DataSaver::computePoses(gtsam::Pose3 cam2odom) {
       if (isInImage(rel_pose)) {  // Cheirality check
         auto rel_t = rel_pose.translation();
         auto rel_q = rel_pose.rotation().quaternion();
-        result_file << gtsam::Symbol(pose_var.key).index();
+        result_file << gtsam::Symbol(pose_var.key).index() / fps_;
         result_file << " " << rel_t.x() << " " << rel_t.y() << " " << rel_t.z();
         result_file << " " << rel_q(1) << " " << rel_q(2) << " " << rel_q(3)
-                    << " " << rel_q(0) << "\n";
+                    << " " << rel_q(0) << std::endl;
       }
     }
+    result_file.close();
   }
+}
+
+void DataSaver::computePoses(std::string pose_file) {
+  gtsam::Values pose_values =
+      result_.filter<gtsam::Pose3>(DataSaver::isPoseKey);
+  ofstream result_file;
+  result_file.open(pose_file);
+  result_file.precision(12);
+  for (auto const &pose_var : pose_values) {
+    auto pose = pose_values.at<gtsam::Pose3>(pose_var.key);
+    auto t = pose.translation();
+    auto q = pose.rotation().quaternion();
+    result_file << gtsam::Symbol(pose_var.key).index() / fps_;
+    result_file << " " << t.x() << " " << t.y() << " " << t.z();
+    result_file << " " << q(1) << " " << q(2) << " " << q(3) << " " << q(0)
+                << std::endl;
+  }
+  result_file.close();
 }
