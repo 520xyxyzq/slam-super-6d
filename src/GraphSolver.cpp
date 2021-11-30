@@ -8,6 +8,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <opencv2/opencv.hpp>
+
 #include "../include/DataLoader.h"
 #include "../include/DataSaver.h"
 

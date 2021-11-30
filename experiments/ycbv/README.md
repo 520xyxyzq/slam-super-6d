@@ -3,6 +3,7 @@ The automated process and results of running RGBD ORB-SLAM3 (in `odom`) and NVID
 
 ## Dependencies
 - [evo](https://github.com/MichaelGrupp/evo)
+- [OpenCV](https://github.com/opencv/opencv)
 - [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) (optional, if you want to rerun the experiment)
 - [DOPE](https://github.com/NVlabs/Deep_Object_Pose) (optional, if you want to rerun the experiment)
 
