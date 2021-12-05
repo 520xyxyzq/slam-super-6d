@@ -5,6 +5,7 @@
 import argparse
 import glob
 import json
+import os
 import shutil
 
 import numpy as np
@@ -143,15 +144,76 @@ def data2dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
     return data_dict
 
 
-def main(obj, txt, ycb, ycb_json, out, fps=10.0,
-         intrinsics=[1066.778, 1067.487, 312.9869, 241.3109270, 0]):
+def camData2Dict(intrinsics, width, height):
+    '''
+    Throw camera data into a dictionary
+    @param intrinsics: [5 array] Camera intrinsics
+    @param width: [int] img width
+    @param height: [int] img height
+    @return cam_dict: [dict] camera data
+    '''
+    cam_dict = {"camera_settings": [
+        {
+            "name": "camera",
+            "intrinsic_settings":
+            {
+                "fx": intrinsics[0],
+                "fy": intrinsics[1],
+                "cx": intrinsics[2],
+                "cy": intrinsics[3],
+                "s": intrinsics[4]
+            },
+            "captured_image_size":
+            {
+                "width": width,
+                "height": height
+            }
+        }
+    ]}
+    return cam_dict
+
+
+def objData2Dict(obj, ycb_json):
+    '''
+    Throw object data into a dictionary
+    @param obj: [string] Object name
+    @param ycb_json: [string] json file containing all ycb objects' data
+    @return obj_dict: object data dictionary
+    '''
+    # Read object data from _ycb_original.json
+    with open(ycb_json) as yj:
+        obj_data = json.load(yj)
+    # Names of all YCB objects
+    class_names = obj_data["exported_object_classes"]
+    # Find index of the current object
+    obj_id = class_names.index(obj)
+    # Load fixed dimensions for the object
+    obj_data = obj_data["exported_objects"][obj_id]
+    # Use white (255) bounding box to viz the obj in nvdu
+    # And dosen't affect training
+    obj_data["segmentation_class_id"] = 255
+    obj_dict = {
+        "exported_object_classes": [obj],
+        "exported_objects": [obj_data]
+    }
+    return obj_dict
+
+# TODO(ziqi): add a global settings file and make fps a global param
+
+
+def main(obj, txt, ycb, ycb_json, out,
+         intrinsics=[1066.778, 1067.487, 312.9869, 241.3109, 0],
+         width=640, height=480, fps=10.0):
     """
     Save DOPE training data to target folder
     @param dim: [str] Object name
     @param txt: [str] path to .txt file (tum format) with object poses
     @param ycb: [str] path to ycb img folder
-    @param ycb_json: [str] json file containing ycb object data
+    @param ycb_json: [str] json file containing all ycb objects' data
     @param out: [str] target folder to save the training data
+    @param intrinsics: [5 array] Camera intrinsics
+    @param width: [int] img width
+    @param height: [int] img height
     @param fps: [float] Sequence fps
     """
     # Get names of all the imgs in ycb folder
@@ -163,8 +225,8 @@ def main(obj, txt, ycb, ycb_json, out, fps=10.0,
         len(img_fnames) >= rel_trans.shape[0]
     ), "Error: #img < #poses should never happen, check folder names"
     # Read object dimensions from ycb_original.json
-    with open(ycb_json) as ycb_json:
-        obj_data = json.load(ycb_json)
+    with open(ycb_json) as yj:
+        obj_data = json.load(yj)
     # Names of all YCB objects
     class_names = obj_data["exported_object_classes"]
     # Find index of the current object
@@ -197,7 +259,16 @@ def main(obj, txt, ycb, ycb_json, out, fps=10.0,
         json_file = out + "{:06}".format(ind + 1) + ".json"
         with open(json_file, "w+") as fp:
             json.dump(data_dict, fp, indent=4, sort_keys=False)
-    # TODO(ziqi): Save camera data and object data to json
+    # Save camera data into _camera_settings.json
+    cam_dict = camData2Dict(intrinsics, width, height)
+    cam_json_file = out + "_camera_settings.json"
+    with open(cam_json_file, "w+") as fp:
+        json.dump(cam_dict, fp, indent=4, sort_keys=False)
+    # Save object data into _camera_settings.json
+    obj_dict = objData2Dict(obj, ycb_json)
+    obj_json_file = out + "_object_settings.json"
+    with open(obj_json_file, "w+") as fp:
+        json.dump(obj_dict, fp, indent=4, sort_keys=False)
     # Another sanity check
     assert (
         len(glob.glob(out + "*.png")) == rel_trans.shape[0]
@@ -232,13 +303,13 @@ if __name__ == "__main__":
         help="Directory to save the imgs and labels",
         default="/home/ziqi/Desktop/test",
     )
-    # There should be no need to change the following params
+    # NOTE: There should be no need to modify the following params
     parser.add_argument(
         "--ycb_json",
         type=str,
         help="Path to the _ycb_original.json file",
-        default="/home/ziqi/Desktop/slam-super-6d/experiments/" +
-        "ycbv/_ycb_original.json",
+        default=os.path.dirname(os.path.realpath(__file__)) +
+        "/_ycb_original.json"
     )
     parser.add_argument(
         "--img",
@@ -246,6 +317,13 @@ if __name__ == "__main__":
         help="Training image name (with extension)",
         default="*-color.png",
     )
+    parser.add_argument("--intrinsics", type=float, nargs="+",
+                        help="Camera intrinsics: fx, fy, cx, cy, s",
+                        default=[1066.778, 1067.487, 312.9869, 241.3109, 0])
+    parser.add_argument("--width", type=int,
+                        help="Camera image width", default=640)
+    parser.add_argument("--height", type=int,
+                        help="Camera image height", default=480)
     parser.add_argument(
         "--fps", type=float, help="Sequence FPS", default=10.0
     )
@@ -255,5 +333,7 @@ if __name__ == "__main__":
     ycb_folder = ycb_folder + args.seq + "/"
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
     main(
-        args.obj, args.txt, ycb_folder, args.ycb_json, target_folder, args.fps
+        args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
+        intrinsics=args.intrinsics, width=args.width, height=args.height,
+        fps=args.fps
     )
