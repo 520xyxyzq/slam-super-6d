@@ -229,12 +229,14 @@ if __name__ == "__main__":
         help="Training image name (with extension)",
         default="*-color.png",
     )
-    parser.add_argument("--fps", type=float, help="Sequence FPS",
-                        default=10.0)
+    parser.add_argument(
+        "--fps", type=float, help="Sequence FPS", default=10.0
+    )
 
     args = parser.parse_args()
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
     ycb_folder = ycb_folder + args.seq + "/"
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
-    main(args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
-         args.fps)
+    main(
+        args.obj, args.txt, ycb_folder, args.ycb_json, target_folder, args.fps
+    )
