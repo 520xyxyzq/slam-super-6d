@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Generate and save DOPE training data from computed detections
 # Ziqi Lu ziqilu@mit.edu
 
@@ -46,7 +47,8 @@ def add_cuboid(trans, quat, dim):
     return cuboid.T
 
 
-def project_cuboid(cuboid, intrinsics, cam_trans=[0, 0, 0], cam_quat=[0, 0, 0, 1]):
+def project_cuboid(cuboid, intrinsics,
+                   cam_trans=[0, 0, 0], cam_quat=[0, 0, 0, 1]):
     """
     Project cuboid (vertices) onto image
     @param cuboid: [8x3 array] Object cuboid vertex coordinates wrt cam [cm]
@@ -198,11 +200,13 @@ if __name__ == "__main__":
         help="Directory to YCB-V data folder",
         default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/",
     )
-    parser.add_argument("--seq", type=str, help="YCB sequence id", default="0000")
+    parser.add_argument("--seq", type=str,
+                        help="YCB sequence id", default="0000")
     parser.add_argument(
         "--txt",
         type=str,
-        help="Directory to txt (tum format) containing" + "relative object poses",
+        help="Directory to txt (tum format) containing" +
+        "relative object poses",
         default="/home/ziqi/Desktop/0000.txt",
     )
     parser.add_argument(
@@ -216,8 +220,8 @@ if __name__ == "__main__":
         "--ycb_json",
         type=str,
         help="Path to the _ycb_original.json file",
-        default="/home/ziqi/Desktop/slam-super-6d/experiments/"
-        + "ycbv/_ycb_original.json",
+        default="/home/ziqi/Desktop/slam-super-6d/experiments/" +
+        "ycbv/_ycb_original.json",
     )
     parser.add_argument(
         "--img",
@@ -225,10 +229,12 @@ if __name__ == "__main__":
         help="Training image name (with extension)",
         default="*-color.png",
     )
-    parser.add_argument("--fps", type=float, help="Sequence FPS", default=10.0)
+    parser.add_argument("--fps", type=float, help="Sequence FPS",
+                        default=10.0)
 
     args = parser.parse_args()
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
     ycb_folder = ycb_folder + args.seq + "/"
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
-    main(args.obj, args.txt, ycb_folder, args.ycb_json, target_folder, args.fps)
+    main(args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
+         args.fps)
