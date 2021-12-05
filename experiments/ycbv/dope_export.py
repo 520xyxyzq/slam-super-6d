@@ -18,7 +18,7 @@ def add_cuboid(trans, quat, dim):
     @param quat: [4 array] Obj quaternion_xyzw wrt camera frame
     (obj coord: x left y down z out)
     @param dim: [3 array] Dimension (x,y,z) of the object
-    @return cuboid: [8x3 array] object cuboid vertex coordinates wrt cam [cm]
+    @return cuboid: [8x3 array] object cuboid vertex coordinates wrt cam [m]
     """
     # In case they are not np arrays
     # And change location unit to [cm]
@@ -44,20 +44,20 @@ def add_cuboid(trans, quat, dim):
     rot_mat = quat2mat([quat[-1], quat[0], quat[1], quat[2]])
     # Transform vertex coords to world frame
     cuboid = rot_mat.dot((vert * vector).T) + trans.reshape(3, 1)
-    return cuboid.T
+    return (cuboid / 100.0).T
 
 
 def project_cuboid(cuboid, intrinsics,
                    cam_trans=[0, 0, 0], cam_quat=[0, 0, 0, 1]):
     """
     Project cuboid (vertices) onto image
-    @param cuboid: [8x3 array] Object cuboid vertex coordinates wrt cam [cm]
+    @param cuboid: [Nx3 array] Object cuboid vertex coordinates wrt cam [m]
     @param intrinsics: [5 array] [fx, fy, cx, cy, s]
     @param cam_trans: [3 array] Camera translation (wrt world frame)
     (This should always be [0, 0, 0] for DOPE)
     @param cam_quat: [4 array] Camera quaternion (wrt world frame)
     (This should always be [0, 0, 0, 1] for DOPE)
-    @return cuboid_proj: [8x2 array] projected cuboid (pixel) coordinates
+    @return cuboid_proj: [Nx2 array] projected cuboid (pixel) coordinates
     """
     # In case they are not np arrays
     cam_trans, cam_quat = np.array(cam_trans), np.array(cam_quat)
@@ -73,9 +73,7 @@ def project_cuboid(cuboid, intrinsics,
     # Extrinsic matrix is inverse of camera world pose
     Rt = (np.linalg.inv(cam_pose))[:3, :]
     # Project
-    cuboid_homo = np.hstack(
-        (cuboid / 100, np.ones((cuboid.shape[0], 1)))
-    )  # [cm] -> [m]
+    cuboid_homo = np.hstack((cuboid, np.ones((cuboid.shape[0], 1))))
     cuboid_proj_homo = K.dot(Rt.dot(cuboid_homo.T))
     cuboid_proj = (cuboid_proj_homo[:2, :] / cuboid_proj_homo[2, :]).T
     return cuboid_proj
@@ -90,6 +88,7 @@ def read_poses(txt):
     @return rel_quat: [Nx4 array] qx,qy,qz,qw
     """
     rel_poses = np.loadtxt(txt)
+    # TODO(ziqi): skip lines with invalid quaternions
     return rel_poses[:, 0], rel_poses[:, 1:4], rel_poses[:, 4:]
 
 
@@ -102,16 +101,19 @@ def copy_img(src, dest):
     shutil.copy2(src, dest)
 
 
-def data2dict(obj, trans, quat, cuboid, cuboid_project):
+def data2dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
     """
     Orgnize object data into a dictionary to be saved in json file
     @param trans: [3 array] object relative translation [m]
     @param quat: [4 array] Obj relative quaternion_xyzw
+    @param centroid: [3 array] object cuboid centroid to cam frame [m]
+    @param centroid_proj: [2 array] obj projected cuboid centroid
     @param cuboid: [8x3 array] object cuboid to cam frame
-    @param cuboid_project: [8x2 array] obj projected cuboid [cm]
+    @param cuboid_proj: [8x2 array] obj projected cuboid [m]
     @return data_dict: [dict] object data dictionary
     """
     # We should not need to use camera data in training
+    # NOTE: All translations must be saved in [cm]
     # TODO(ziqi): Make this applicable to multi-objects
     data_dict = {
         "camera_data": {
@@ -123,15 +125,22 @@ def data2dict(obj, trans, quat, cuboid, cuboid_project):
                 "class": obj,
                 "location": (100 * trans).tolist(),
                 "quaternion_xyzw": quat.tolist(),
-                "cuboid": cuboid.tolist(),
-                "projected_cuboid": cuboid_project.tolist(),
+                "bounding_box": {  # Loaded in train but not used
+                    "top_left": [0, 0],
+                    "bottom_right": [0, 0]
+                },
+                "cuboid_centroid": (100 * centroid).tolist(),
+                "projected_cuboid_centroid": centroid_proj.tolist(),
+                "cuboid": (100 * cuboid).tolist(),
+                "projected_cuboid": cuboid_proj.tolist(),
             }
         ],
     }
     return data_dict
 
 
-def main(obj, txt, ycb, ycb_json, out, fps=10.0):
+def main(obj, txt, ycb, ycb_json, out, fps=10.0,
+         intrinsics=[1066.778, 1067.487, 312.9869, 241.3109270, 0]):
     """
     Save DOPE training data to target folder
     @param dim: [str] Object name
@@ -168,23 +177,27 @@ def main(obj, txt, ycb, ycb_json, out, fps=10.0):
         cuboid = add_cuboid(rel_trans[ii, :], rel_quat[ii, :], dim)
         # Intrinsics hard coded for YCB sequence
         # TODO(ziqi): Make this a param
-        cuboid_proj = project_cuboid(
-            cuboid, [1066.778, 1067.487, 312.9869, 241.3109270, 0]
-        )
+        cuboid_proj = project_cuboid(cuboid, intrinsics)
+        # NOTE: Centroid is always object center for YCB objects
+        # But may need to change this for other objects
+        centroid = rel_trans[ii, :]
+        # Project centroid to center using the same function
+        centroid_proj = project_cuboid(centroid.reshape(1, 3), intrinsics)
         # Throw all the data into a dictionary
         data_dict = data2dict(
-            obj, rel_trans[ii, :], rel_quat[ii, :], cuboid, cuboid_proj
+            obj, rel_trans[ii, :], rel_quat[ii, :],
+            centroid, centroid_proj,
+            cuboid, cuboid_proj
         )
         # Save dictionary to json file
         json_file = out + "{:06}".format(ind + 1) + ".json"
         with open(json_file, "w+") as fp:
             json.dump(data_dict, fp, indent=4, sort_keys=False)
     # TODO(ziqi): Save camera data and object data to json
-    # TODO(ziqi): Add cuboid to json
     # Another sanity check
     assert (
         len(glob.glob(out + "*.png")) == rel_trans.shape[0]
-    ), "Error: #imgs must always == #poses, check indices"
+    ), "Error: #imgs must always == #poses, check target folder"
     print("Data Generation Finished!")
 
 
