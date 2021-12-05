@@ -8,7 +8,7 @@ import json
 import shutil
 
 import numpy as np
-from transforms3d.quaternions import quat2mat
+from transforms3d.quaternions import qisunit, quat2mat
 
 
 def add_cuboid(trans, quat, dim):
@@ -88,8 +88,12 @@ def read_poses(txt):
     @return rel_quat: [Nx4 array] qx,qy,qz,qw
     """
     rel_poses = np.loadtxt(txt)
-    # TODO(ziqi): skip lines with invalid quaternions
-    return rel_poses[:, 0], rel_poses[:, 1:4], rel_poses[:, 4:]
+    # Skip lines with invalid quaternions
+    ind = []
+    for ii in range(rel_poses.shape[0]):
+        if (qisunit(rel_poses[ii, 4:])):
+            ind.append(ii)
+    return rel_poses[ind, 0], rel_poses[ind, 1:4], rel_poses[ind, 4:]
 
 
 def copy_img(src, dest):
