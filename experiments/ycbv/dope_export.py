@@ -135,7 +135,7 @@ def data2dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
                     "bottom_right": [0, 0]
                 },
                 "cuboid_centroid": (100 * centroid).tolist(),
-                "projected_cuboid_centroid": centroid_proj.tolist(),
+                "projected_cuboid_centroid": centroid_proj.ravel().tolist(),
                 "cuboid": (100 * cuboid).tolist(),
                 "projected_cuboid": cuboid_proj.tolist(),
             }
@@ -192,6 +192,7 @@ def objData2Dict(obj, ycb_json):
     # Use white (255) bounding box to viz the obj in nvdu
     # And dosen't affect training
     obj_data["segmentation_class_id"] = 255
+    # TODO(ziqi): Make this applicable to multi-objects
     obj_dict = {
         "exported_object_classes": [obj],
         "exported_objects": [obj_data]
@@ -242,7 +243,6 @@ def main(obj, txt, ycb, ycb_json, out,
         # compute cuboid of object
         cuboid = add_cuboid(rel_trans[ii, :], rel_quat[ii, :], dim)
         # Intrinsics hard coded for YCB sequence
-        # TODO(ziqi): Make this a param
         cuboid_proj = project_cuboid(cuboid, intrinsics)
         # NOTE: Centroid is always object center for YCB objects
         # But may need to change this for other objects
