@@ -103,24 +103,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fps", type=float, help="Sequence FPS", default=10.0
     )
-    args = parser.parse_args()
     # TODO(zq): read this from ycb json file (as default)
     parser.add_argument("--seqs", type=str, nargs="+",
                         help="Seqs to generate GT from, make sure have obj",
                         default=["1", "14", "15", "20", "25", "29", "33",
                                  "36", "37", "43", "49", "51", "54", "55",
-                                 "60", "74", "77", "85", "89"])
+                                 "58", "60", "74", "77", "85", "89"])
     parser.add_argument(
         "--out",
         type=str,
-        help="Directory to save the ground truth detection txts",
+        help="Directory to save the GT detection txts, no need for obj name!",
         default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
-        "/dets/ground_truth/" + args.obj
+        "/dets/ground_truth/"
     )
     args = parser.parse_args()
 
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
+    target_folder += args.obj + "/"
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
-
+    print(target_folder)
     main(args.obj, ycb_folder, args.seqs,
          target_folder, args.ycb_json, args.fps)
