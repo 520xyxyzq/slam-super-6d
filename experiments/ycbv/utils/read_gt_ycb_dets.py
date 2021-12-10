@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Read ground truth object pose measurements from YCB-V dataset
 # Ziqi Lu ziqilu@mit.edu
 
@@ -48,7 +49,9 @@ def main(obj, ycb, seqs, out, ycb_json, fps=10.0):
     obj_transf[:3, 3] = [0, 0, 0]
     print("Fetching %s ground truth pose measurements" % obj)
 
+    # TODO(ziqi): check whether the out folder exists, if not, create it.
     for ii in seqs:
+        # reformat the sequence name string
         seq_id = ii.rjust(4, "0")
         # Create the camera pose file
         gtf = open(out + seq_id + "_ycb_gt.txt", "w")
