@@ -25,3 +25,10 @@ The automated process and results of running RGBD ORB-SLAM3 (in `odom`) and NVID
 - NVIDIA DOPE:
     - <ycb_seq_id>_ycb_poses: object pose detection at all times in a YCB sequence (all 0's if no detection)
     - Coordinate system: camera convention (z-out, y-right, x-down)
+
+## Files
+- _ycb_original.json:
+    - exported_object_classes: YCB-V object class names
+    - fixed_model_transform: Transpose of obj transform to align and center original YCB object coordinate; Note that the unit is [cm]; it is the transformation of the original obj frame wrt the new frame.
+    - cuboid_dimensions: dimensions of the object's 3D bounding box (x, y, z in the new centered obj frame)
+    - seqs: YCB seqs in which the object shows up
