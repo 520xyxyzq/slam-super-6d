@@ -11,17 +11,6 @@ import numpy as np
 import scipy.io
 from transforms3d.quaternions import mat2quat
 
-# TODO(ziqi): modify ycb_json file and implement this
-
-
-def seqsHavingObj(obj, ycb_json):
-    '''
-    Read ids of sequences that have "obj" in it
-    @param obj: [string] object name
-    @param ycb_json: Path to the _ycb_original.json file
-    '''
-    pass
-
 
 def main(obj, ycb, seqs, out, ycb_json, fps=10.0):
     '''
@@ -49,7 +38,9 @@ def main(obj, ycb, seqs, out, ycb_json, fps=10.0):
     obj_transf[:3, 3] = [0, 0, 0]
     print("Fetching %s ground truth pose measurements" % obj)
 
-    # TODO(ziqi): check whether the out folder exists, if not, create it.
+    # Check whether the out folder exists, if not, create it.
+    if not os.path.exists(out):
+        os.makedirs(out)
     for ii in seqs:
         # reformat the sequence name string
         seq_id = ii.rjust(4, "0")
@@ -81,6 +72,21 @@ def main(obj, ycb, seqs, out, ycb_json, fps=10.0):
         gtf.close()
 
 
+def seqsHavingObj(obj, ycb_json):
+    '''
+    Read ids of sequences that have "obj" in it
+    @param obj: [string] object name
+    @param ycb_json: [string] Path to the _ycb_original.json file
+    @return seqs: [list] List of seqs (as strings) having obj
+    '''
+    with open(ycb_json) as yj:
+        transforms = json.load(yj)
+    class_names = transforms["exported_object_classes"]
+    # Find index of the current object
+    obj_id = class_names.index(obj)
+    return transforms["exported_objects"][obj_id]["seqs"]
+
+
 if __name__ == "__main__":
     # Read command line args
     parser = argparse.ArgumentParser()
@@ -94,6 +100,14 @@ if __name__ == "__main__":
         default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/",
     )
     parser.add_argument(
+        "--out",
+        type=str,
+        help="Directory to save the GT detection txts, no need for obj name!",
+        default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
+        "/dets/ground_truth/"
+    )
+    # NOTE: There should be no need to modify the following params
+    parser.add_argument(
         "--ycb_json",
         type=str,
         help="Path to the _ycb_original.json file",
@@ -103,24 +117,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fps", type=float, help="Sequence FPS", default=10.0
     )
-    # TODO(zq): read this from ycb json file (as default)
     parser.add_argument("--seqs", type=str, nargs="+",
                         help="Seqs to generate GT from, make sure have obj",
-                        default=["1", "14", "15", "20", "25", "29", "33",
-                                 "36", "37", "43", "49", "51", "54", "55",
-                                 "58", "60", "74", "77", "85", "89"])
-    parser.add_argument(
-        "--out",
-        type=str,
-        help="Directory to save the GT detection txts, no need for obj name!",
-        default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
-        "/dets/ground_truth/"
-    )
+                        default=None)
     args = parser.parse_args()
 
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
     target_folder += args.obj + "/"
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
-    print(target_folder)
-    main(args.obj, ycb_folder, args.seqs,
+    # If seqs not specified, read all the seqs in which obj shows up
+    if args.seqs is None:
+        seqs = seqsHavingObj(args.obj, args.ycb_json)
+    else:
+        seqs = args.seqs
+
+    main(args.obj, ycb_folder, seqs,
          target_folder, args.ycb_json, args.fps)
