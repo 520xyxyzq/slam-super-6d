@@ -9,10 +9,10 @@ import os
 import shutil
 
 import numpy as np
-from transforms3d.quaternions import qisunit, quat2mat
+from transforms3d.quaternions import qisunit, qmult, quat2mat
 
 
-def add_cuboid(trans, quat, dim):
+def add_cuboid(trans, quat, dim, new=False):
     """
     Compute cuboid of an object from its pose and dimensions
     @param trans: [3 array] Object center location wrt camera frame [m]
@@ -23,22 +23,38 @@ def add_cuboid(trans, quat, dim):
     """
     # In case they are not np arrays
     # And change location unit to [cm]
-    trans, quat, dim = np.array(trans * 100), np.array(quat), np.array(dim)
-    # Helper vector to get vector from obj center to vertices
-    # Vertex order here:
-    # research.nvidia.com/sites/default/files/pubs/2018-06_Falling-Things/
-    vert = np.array(
-        [
-            [1, -1, 1],
-            [-1, -1, 1],
-            [-1, 1, 1],
-            [1, 1, 1],
-            [1, -1, -1],
-            [-1, -1, -1],
-            [-1, 1, -1],
-            [1, 1, -1],
-        ]
-    )
+    trans, quat, dim = np.array(trans) * 100, np.array(quat), np.array(dim)
+    if not new:
+        # Helper vector to get vector from obj center to vertices
+        # Vertex order here:
+        # https://research.nvidia.com/publication/2018-06_Falling-Things
+        vert = np.array(
+            [
+                [1, -1, 1],
+                [-1, -1, 1],
+                [-1, 1, 1],
+                [1, 1, 1],
+                [1, -1, -1],
+                [-1, -1, -1],
+                [-1, 1, -1],
+                [1, 1, -1],
+            ]
+        )
+    else:
+        # Vertex order for the new training script (centroid included)
+        vert = np.array(
+            [
+                [1, -1, 1],
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, -1],
+                [-1, -1, 1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, -1],
+                [0, 0, 0]
+            ]
+        )
     # Vector from center to one vertex (id 3)
     vector = dim.reshape(1, 3) / 2
     # Rotation matrix from quaternion (quat2mat follows qw qx qy qz order)
@@ -97,6 +113,24 @@ def read_poses(txt):
     return rel_poses[ind, 0], rel_poses[ind, 1:4], rel_poses[ind, 4:]
 
 
+def matchObjName(obj_sub, ycb_json):
+    """
+    Use substring to find full object name
+    @param obj_sub: [string] Substring of object name
+    @param ycb_json: [string] json file containing all ycb objects' data
+    @return obj: [string] Object name
+    """
+    # Read object data from _ycb_original.json
+    with open(ycb_json) as yj:
+        obj_data = json.load(yj)
+    # Names of all YCB objects
+    class_names = obj_data["exported_object_classes"]
+    # Object names with obj_sub in it
+    matches = [s for s in class_names if obj_sub in s]
+    assert (len(matches) == 1), "Error: No match or ambiguous obj name"
+    return matches[0]
+
+
 def copy_img(src, dest):
     """
     Copy img from one path to another
@@ -106,7 +140,7 @@ def copy_img(src, dest):
     shutil.copy2(src, dest)
 
 
-def data2dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
+def data2Dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
     """
     Orgnize object data into a dictionary to be saved in json file
     @param trans: [3 array] object relative translation [m]
@@ -138,6 +172,47 @@ def data2dict(obj, trans, quat, centroid, centroid_proj, cuboid, cuboid_proj):
                 "projected_cuboid_centroid": centroid_proj.ravel().tolist(),
                 "cuboid": (100 * cuboid).tolist(),
                 "projected_cuboid": cuboid_proj.tolist(),
+            }
+        ],
+    }
+    return data_dict
+
+
+def data2DictNew(obj, trans, quat, cuboid, cuboid_proj):
+    """
+    Orgnize object data into a dictionary to be saved in json file
+    This is compatible with new DOPE training script for nvisii generated data
+    @param trans: [3 array] object relative translation [m]
+    @param quat: [4 array] Obj relative quaternion_xyzw
+    @param cuboid: [9x3 array] object cuboid to cam frame
+    @param cuboid_proj: [9x2 array] obj projected cuboid + centroid [m]
+    @return data_dict: [dict] object data dictionary
+    """
+    # We should not need to use camera data in training
+    # NOTE: All translations are saved in [m]
+    # TODO(ziqi): Make this applicable to multi-objects
+
+    # NOTE: The camera coordinate frame in NVISII generated data is following
+    #       the blender convention: x right, y up, z in
+    trans[1:] = -trans[1:]
+    # This quaternion (order: wxyz) means rotating around x for 180 deg
+    q_t = np.array([0, 1, 0, 0])
+    # Pre-rotate the relative object orientation to get rel pose wrt new frame
+    q_new = qmult(q_t, np.hstack((quat[-1], quat[:3])))
+    q_new = np.hstack((q_new[1:], q_new[0]))
+
+    data_dict = {
+        "camera_data": {
+            "location_world": [0, 0, 0],
+            "quaternion_world_xyzw": [0, 0, 0, 1],
+        },
+        "objects": [
+            {
+                "class": obj,
+                "visibility": 1,
+                "location": trans.tolist(),
+                "quaternion_xyzw": q_new.tolist(),
+                "projected_cuboid": cuboid_proj.tolist()
             }
         ],
     }
@@ -202,16 +277,17 @@ def objData2Dict(obj, ycb_json):
 # TODO(ziqi): add a global settings file and make fps a global param
 
 
-def main(obj, txt, ycb, ycb_json, out,
+def main(obj, txt, ycb, ycb_json, out, new=False,
          intrinsics=[1066.778, 1067.487, 312.9869, 241.3109, 0],
          width=640, height=480, fps=10.0):
     """
     Save DOPE training data to target folder
-    @param dim: [str] Object name
+    @param obj: [str] Object name
     @param txt: [str] path to .txt file (tum format) with object poses
     @param ycb: [str] path to ycb img folder
     @param ycb_json: [str] json file containing all ycb objects' data
     @param out: [str] target folder to save the training data
+    @param new: [bool] Whether generate data for new DOPE training script
     @param intrinsics: [5 array] Camera intrinsics
     @param width: [int] img width
     @param height: [int] img height
@@ -222,26 +298,29 @@ def main(obj, txt, ycb, ycb_json, out,
     # Get all the relative object poses
     indices, rel_trans, rel_quat = read_poses(txt)
     # Sanity check
-    assert (
-        len(img_fnames) >= rel_trans.shape[0]
-    ), "Error: #img < #poses should never happen, check folder names"
+    assert (len(img_fnames) >= rel_trans.shape[0]), \
+        "Error: #img < #poses should never happen, check folder names"
+
     # Read object dimensions from ycb_original.json
     with open(ycb_json) as yj:
         obj_data = json.load(yj)
     # Names of all YCB objects
     class_names = obj_data["exported_object_classes"]
+    # Use substring to get full object name
+    obj_full = matchObjName(obj, ycb_json)
     # Find index of the current object
-    obj_id = class_names.index(obj)
+    obj_id = class_names.index(obj_full)
     # Load fixed dimensions for the object
     dim = obj_data["exported_objects"][obj_id]["cuboid_dimensions"]
+
+    # Generating data
     for ii in range(rel_trans.shape[0]):
-        # continue
         # Index for image
         ind = int(indices[ii] * fps)
         # Copy img to target folder and rename by index
         copy_img(img_fnames[ind], out + "{:06}".format(ind + 1) + ".png")
         # compute cuboid of object
-        cuboid = add_cuboid(rel_trans[ii, :], rel_quat[ii, :], dim)
+        cuboid = add_cuboid(rel_trans[ii, :], rel_quat[ii, :], dim, new)
         # Intrinsics hard coded for YCB sequence
         cuboid_proj = project_cuboid(cuboid, intrinsics)
         # NOTE: Centroid is always object center for YCB objects
@@ -250,25 +329,34 @@ def main(obj, txt, ycb, ycb_json, out,
         # Project centroid to center using the same function
         centroid_proj = project_cuboid(centroid.reshape(1, 3), intrinsics)
         # Throw all the data into a dictionary
-        data_dict = data2dict(
-            obj, rel_trans[ii, :], rel_quat[ii, :],
-            centroid, centroid_proj,
-            cuboid, cuboid_proj
-        )
+        if new:
+            data_dict = data2DictNew(
+                obj, rel_trans[ii, :], rel_quat[ii, :],
+                cuboid, cuboid_proj
+            )
+        else:
+            data_dict = data2Dict(
+                obj, rel_trans[ii, :], rel_quat[ii, :],
+                centroid, centroid_proj,
+                cuboid, cuboid_proj
+            )
         # Save dictionary to json file
         json_file = out + "{:06}".format(ind + 1) + ".json"
         with open(json_file, "w+") as fp:
             json.dump(data_dict, fp, indent=4, sort_keys=False)
+
     # Save camera data into _camera_settings.json
     cam_dict = camData2Dict(intrinsics, width, height)
     cam_json_file = out + "_camera_settings.json"
     with open(cam_json_file, "w+") as fp:
         json.dump(cam_dict, fp, indent=4, sort_keys=False)
+
     # Save object data into _camera_settings.json
-    obj_dict = objData2Dict(obj, ycb_json)
+    obj_dict = objData2Dict(obj_full, ycb_json)
     obj_json_file = out + "_object_settings.json"
     with open(obj_json_file, "w+") as fp:
         json.dump(obj_dict, fp, indent=4, sort_keys=False)
+
     # Another sanity check
     assert (
         len(glob.glob(out + "*.png")) == rel_trans.shape[0]
@@ -303,6 +391,14 @@ if __name__ == "__main__":
         help="Directory to save the imgs and labels",
         default="/home/ziqi/Desktop/test",
     )
+    # NOTE: DOPE released a new training script in Dec. 2021
+    # It uses slightly different data format
+    parser.add_argument(
+        "--new", "-n",
+        help="Is this for new DOPE training script?",
+        dest='new', action='store_true'
+    )
+    parser.set_defaults(new=False)
     # NOTE: There should be no need to modify the following params
     parser.add_argument(
         "--ycb_json",
@@ -332,8 +428,20 @@ if __name__ == "__main__":
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
     ycb_folder = ycb_folder + args.seq + "/"
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
+    # If intrinsics not passed in but ycb seq number < 60, use default
+    # If intrinsics not passed in but ycb seq number >= 60, use 2nd default
+    if args.intrinsics == [1066.778, 1067.487, 312.9869, 241.3109, 0]:
+        if int(args.seq) < 60:
+            intrinsics = args.intrinsics
+        else:
+            # Default camera model is changed for seq 0060 ~ 0091 in YCB-V
+            intrinsics = [1077.836, 1078.189, 323.7872, 279.6921, 0]
+    else:
+        # If intrinsics passed in, use it
+        intrinsics = args.intrinsics
+
     main(
         args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
-        intrinsics=args.intrinsics, width=args.width, height=args.height,
-        fps=args.fps
+        new=args.new, intrinsics=intrinsics, width=args.width,
+        height=args.height, fps=args.fps
     )
