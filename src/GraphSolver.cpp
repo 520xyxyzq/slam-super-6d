@@ -15,11 +15,14 @@
 
 // TODO(ziqi): generalize to multi-object in each scene
 int main(int argc, char** argv) {
-  if (argc != 3) {
-    std::cout << "Usage: ./program odom_file_path det_file_path " << std::endl;
+  if (argc != 5) {
+    std::cout << "Usage: ./program odom_file_path det_file_path out_pose_path "
+                 "out_det_path"
+              << std::endl;
     return -1;
   }
   std::string odom_path = argv[1], det_path = argv[2];
+  std::string out_pose_path = argv[3], out_det_path = argv[4];
   DataLoader data_loader(odom_path, det_path);
 
   gtsam::NonlinearFactorGraph graph;
@@ -125,8 +128,8 @@ int main(int argc, char** argv) {
   }
 
   DataSaver saver(graph, result);
-  saver.computeDets("/home/ziqi/Desktop/0001.txt", cam2robot);
-  saver.computePoses("/home/ziqi/Desktop/0001_poses.txt");
+  saver.computeDets(out_det_path, cam2robot);
+  saver.computePoses(out_pose_path);
   cout << "Done" << endl;
   return 0;
 }
