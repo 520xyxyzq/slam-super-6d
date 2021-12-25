@@ -313,6 +313,10 @@ def main(obj, txt, ycb, ycb_json, out, new=False,
     # Load fixed dimensions for the object
     dim = obj_data["exported_objects"][obj_id]["cuboid_dimensions"]
 
+    # Check whether the out folder exists, if not, create it.
+    if not os.path.exists(out):
+        os.makedirs(out)
+
     # Generating data
     for ii in range(rel_trans.shape[0]):
         # Index for image
