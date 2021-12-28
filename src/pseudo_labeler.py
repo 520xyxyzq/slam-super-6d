@@ -57,9 +57,13 @@ class PseudoLabeler(object):
 
         # Read object detection files
         self._dets_ = []
+        # Save also detection file names for output
+        self._det_fnames_ = []
         for detf in det_files:
             det = self.readTum(detf)
             self._dets_.append(det)
+            det_fname = os.path.basename(detf)
+            self._det_fnames_.append(det_fname)
             # TODO(ZIQI): check whether det stamps are subset of odom stamps
             assert (len(det) > 0), \
                 "Error: Object det file empty or wrong format"
@@ -73,6 +77,7 @@ class PseudoLabeler(object):
         @param txt: [string] Path to the txt file containing poses
         @return poses: [dict] {stamp: gtsam.Pose3}
         """
+        # TODO: assert tum format here
         rel_poses = np.loadtxt(txt)
         # Read poses into dict of GTSAM poses
         poses = {}
@@ -228,6 +233,10 @@ class PseudoLabeler(object):
         @param optimizer: [int] NLS optimizer for pose graph optimization
         @return result: [gtsam.Values] Optimization result
         """
+        # Make sure solve is called after buildGraph()
+        assert(hasattr(self, "_fg_")), \
+            "Error: No factor graph yet, please build graph before solving it"
+
         if optimizer == Optimizer.GaussNewton:
             params = gtsam.GaussNewtonParams()
             params.setVerbosity("ERROR")
@@ -243,14 +252,14 @@ class PseudoLabeler(object):
         elif optimizer == Optimizer.GncGaussNewton:
             params = gtsam.GaussNewtonParams()
             params = gtsam.GncGaussNewtonParams(params)
-            params.setVerbosityGNC(params.Verbosity.SUMMARY)
+            params.setVerbosityGNC(params.Verbosity.SILENT)
             optim = gtsam.GncGaussNewtonOptimizer(
                 self._fg_, self._init_vals_, params
             )
         elif optimizer == Optimizer.GncLM:
             params = gtsam.LevenbergMarquardtParams()
             params = gtsam.GncLMParams(params)
-            params.setVerbosityGNC(params.Verbosity.SUMMARY)
+            params.setVerbosityGNC(params.Verbosity.SILENT)
             optim = gtsam.GncLMOptimizer(
                 self._fg_, self._init_vals_, params
             )
@@ -263,12 +272,93 @@ class PseudoLabeler(object):
 
         self._result_ = optim.optimize()
 
-    def save(self, out):
+    def solveByIter(self, optimizer):
+        """
+        Jointly optimize SLAM variables and detection noise models by
+        alternative minimization
+        @param optimizer: [int] NLS optimizer for pose graph optimization
+        """
+        pass
+
+    def recomputeDets(self):
+        """
+        Recompute object pose detections (i.e. Pseudo labels) from PGO results
+        @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
+        """
+        self._plabels_ = []
+        # For each object
+        for ii in range(len(self._dets_)):
+            lm_pose = self._result_.atPose3(L(ii))
+            obj_dets = {}
+            # Recompute relative obj pose at each time step
+            for jj, stamp in enumerate(self._stamps_):
+                cam_pose = self._result_.atPose3(X(jj))
+                rel_obj_pose = cam_pose.inverse().compose(lm_pose)
+                # Skip is object center not in image
+                if not self.isInImage(rel_obj_pose):
+                    print("Obj %d not in image at stamp %.1f" %
+                          (ii, stamp))
+                    continue
+                obj_dets[stamp] = rel_obj_pose
+            self._plabels_.append(obj_dets)
+
+    def isInImage(self, rel_obj_pose):
+        """
+        Check if the object (center) is in the image
+        TODO(Zq): Handle situations where obj origin is not at center
+        @param rel_obj_pose: [gtsam.pose] Relative object pose
+        @return isInImage: [bool] Whether object is in image
+        """
+        # NOTE: Assume camera follow (x right y down z out) convention
+        if rel_obj_pose.z() <= 0:
+            return False
+        # Project object center to
+        cam = gtsam.PinholeCameraCal3_S2(gtsam.Pose3(), self._K_)
+        point = cam.project(rel_obj_pose.translation())
+        if point[0] > self._img_dim_[0] or point[1] > self._img_dim_[1] or \
+                point[0] < 0 or point[1] < 0:
+            return False
+        return True
+
+    def assembleData(self, data_dict):
+        """
+        Assemble pseudo labels (tum format) from relative object poses
+        (GTSAM format)
+        @param data_dict: [{stamp:gtsam.Pose3}] Recomputed obj detections
+        @param data: [Nx8 array] stamp,x,y,z,qx,qy,qz,qw
+        """
+        assert(len(data_dict) > 0), "Error: Recomputed detections empty"
+        stamps = sorted(data_dict.keys())
+        data = np.zeros((len(stamps), 8))
+        for ii, stamp in enumerate(stamps):
+            data[ii, 0] = stamp
+            data[ii, 1:] = self.gtsamPose32Tum(data_dict[stamp])
+        return data
+
+    def saveData(self, out, img_dim, intrinsics):
         """
         Save data to target folder
         @param out: [string] Target folder to save results
+        @param img_dim: [2-list] Image dimension [width, height]
+        @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
         """
-        pass
+        self._img_dim_ = img_dim
+        self._K_ = gtsam.Cal3_S2(
+            intrinsics[0], intrinsics[1], intrinsics[4], intrinsics[2],
+            intrinsics[3]
+        )
+        # Make sure saveData is called after self.solve()
+        assert(hasattr(self, "_result_")), \
+            "Error: No PGO results yet, please solve PGO before saving data"
+        # Recompute obj pose detections
+        self.recomputeDets()
+        for ii, plabel in enumerate(self._plabels_):
+            data = self.assembleData(plabel)
+            out_fname = self._det_fnames_[ii]
+            np.savetxt(
+                out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
+                data, fmt=["%.1f"] + ["%.12f"] * 7
+            )
 
     def plot(self):
         """
@@ -377,5 +467,6 @@ if __name__ == '__main__':
     pl.buildGraph(args.prior_noise, args.odom_noise,
                   args.det_noise, args.kernel, args.kernel_param)
     pl.solve(args.optim)
+    pl.saveData(target_folder, args.img_dim, args.intrinsics)
     if args.plot:
         pl.plot()
