@@ -33,9 +33,13 @@ class Kernels(IntEnum):
 class Optimizer(IntEnum):
     GaussNewton = 0
     LevenbergMarquardt = 1
+    # NOTE: GNC by default uses TLS loss type
+    # GNC assumes noise models are Gaussian
+    # Will replace non-Gaussian robust kernel w/ Gaussian even if provided
     GncGaussNewton = 2
     GncLM = 3
-    # TODO(zq): add loss type
+    GncGaussNewtonGM = 4
+    GncLMGM = 5
 
 
 class PseudoLabeler(object):
@@ -183,18 +187,22 @@ class PseudoLabeler(object):
             )
         elif optimizer == Optimizer.GncGaussNewton:
             params = gtsam.GaussNewtonParams()
-            params.setVerbosity("ERROR")
             params = gtsam.GncGaussNewtonParams(params)
+            params.setVerbosityGNC(params.Verbosity.SUMMARY)
             optim = gtsam.GncGaussNewtonOptimizer(
                 self._fg_, self._init_vals_, params
             )
         elif optimizer == Optimizer.GncLM:
             params = gtsam.LevenbergMarquardtParams()
-            params.setVerbosity("ERROR")
-            params = gtsam.GncLMParams()
+            params = gtsam.GncLMParams(params)
+            params.setVerbosityGNC(params.Verbosity.SUMMARY)
             optim = gtsam.GncLMOptimizer(
                 self._fg_, self._init_vals_, params
             )
+        elif optimizer in [Optimizer.GncGaussNewtonGM, Optimizer.GncLMGM]:
+            # TODO(any): keep an eye on this
+            assert(False), \
+                "Error: GTSAM Python GNC optim w/ GM loss under development"
         else:
             assert(False), "Error: Unknown optimizer type"
 
@@ -240,7 +248,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
-        default=[root+"/experiments/ycbv/dets/results/0001_ycb_poses.txt"]
+        default=[root + "/experiments/ycbv/dets/results/0001_ycb_poses.txt"]
     )
     parser.add_argument(
         "--prior_noise", "-pn", nargs="+", type=float,
