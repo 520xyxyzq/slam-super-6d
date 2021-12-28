@@ -5,6 +5,7 @@
 
 import argparse
 import os
+from enum import IntEnum
 
 import gtsam
 import gtsam.utils.plot as gtsam_plot
@@ -15,6 +16,26 @@ from transforms3d.quaternions import qisunit
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
 X = gtsam.symbol_shorthand.X
+
+
+# Robusr kernels to be used in PGO
+class Kernels(IntEnum):
+    Gauss = 0
+    MaxMix = 1
+    Cauchy = 2
+    GemanMcClure = 3
+    Huber = 4
+    Tukey = 5
+    Welsch = 6
+
+
+# NLS optimizers
+class Optimizer(IntEnum):
+    GaussNewton = 0
+    LevenbergMarquardt = 1
+    GncGaussNewton = 2
+    GncLM = 3
+    # TODO(zq): add loss type
 
 
 class PseudoLabeler(object):
@@ -148,27 +169,26 @@ class PseudoLabeler(object):
         @param optimizer: [int] NLS optimizer for pose graph optimization
         @return result: [gtsam.Values] Optimization result
         """
-        # TODO(ZQ): Add enum class
-        if optimizer == 0:
+        if optimizer == Optimizer.GaussNewton:
             params = gtsam.GaussNewtonParams()
             params.setVerbosity("ERROR")
             optim = gtsam.GaussNewtonOptimizer(
                 self._fg_, self._init_vals_, params
             )
-        elif optimizer == 1:
+        elif optimizer == Optimizer.LevenbergMarquardt:
             params = gtsam.LevenbergMarquardtParams()
             params.setVerbosity("ERROR")
             optim = gtsam.LevenbergMarquardtOptimizer(
                 self._fg_, self._init_vals_, params
             )
-        elif optimizer == 2:
+        elif optimizer == Optimizer.GncGaussNewton:
             params = gtsam.GaussNewtonParams()
             params.setVerbosity("ERROR")
             params = gtsam.GncGaussNewtonParams(params)
             optim = gtsam.GncGaussNewtonOptimizer(
                 self._fg_, self._init_vals_, params
             )
-        elif optimizer == 3:
+        elif optimizer == Optimizer.GncLM:
             params = gtsam.LevenbergMarquardtParams()
             params.setVerbosity("ERROR")
             params = gtsam.GncLMParams()
@@ -178,26 +198,27 @@ class PseudoLabeler(object):
         else:
             assert(False), "Error: Unknown optimizer type"
 
-        result = optim.optimize()
-        # result.print()
-        return result
+        self._result_ = optim.optimize()
 
-    def main(self):
+    def plot(self):
         """
         Solve PGO and generate pseudo labels
         """
-        while self._t_ != len(self._odom_):
-            stamp = self._stamps_[self._t_]
+        it = 0
+        while it != len(self._odom_):
+            stamp = self._stamps_[it]
             odom = self._odom_[stamp]
             for det in self._dets_:
                 det_ = det.get(stamp, False)
                 if det_:
                     lm = odom.compose(det_)
                     gtsam_plot.plot_point3(0, lm.translation(), "r.")
-            if self._t_ % 20 == 0:
-                fig = gtsam_plot.plot_pose3(0, odom, 0.1)
+            if it % 20 == 0:
+                gtsam_plot.plot_pose3(0, odom, 0.1)
+                fig = gtsam_plot.plot_pose3(
+                    0, self._result_.atPose3(X(it)), 0.1)
 
-            self._t_ += 1
+            it += 1
 
         axes = fig.gca(projection='3d')
         axes.view_init(azim=-90, elev=-45)
@@ -260,4 +281,5 @@ if __name__ == '__main__':
     pl.buildGraph(args.prior_noise, args.odom_noise,
                   args.det_noise, args.kernel, args.kernel_param)
     pl.solve(args.optim)
-    pl.main()
+    if args.plot:
+        pl.plot()
