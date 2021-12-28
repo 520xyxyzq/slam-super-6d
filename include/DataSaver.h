@@ -81,7 +81,7 @@ DataSaver::DataSaver(const gtsam::NonlinearFactorGraph &graph,
   // TODO(ziqi): This is YCB specific, should read them as params
   K_ = gtsam::Cal3_S2::shared_ptr(
       new gtsam::Cal3_S2(1066.778, 1067.487, 0, 312.9869, 241.3109));
-  img_dim_ = {480, 640};
+  img_dim_ = {640, 480};
   // FPS of odometry (should make this consistent with other files)
   fps_ = 10.0;
 }
@@ -93,8 +93,8 @@ bool DataSaver::isInImage(const gtsam::Pose3 rel_pose) {
   try {
     // TODO(ziqi): Check if the obj pose's origin is at center
     gtsam::Point2 point = cam.project(rel_pose.translation());
-    if (point.x() > img_dim_.first || point.y() > img_dim_.second) {
-      cout << point.x() << "; " << point.y() << endl;
+    if (point.x() > img_dim_.first || point.y() > img_dim_.second ||
+        point.x() < 0 || point.y() < 0) {
       return false;
     }
     return true;
@@ -128,6 +128,9 @@ void DataSaver::computeDets(std::string det_file, gtsam::Pose3 cam2odom) {
         result_file << " " << rel_t.x() << " " << rel_t.y() << " " << rel_t.z();
         result_file << " " << rel_q(1) << " " << rel_q(2) << " " << rel_q(3)
                     << " " << rel_q(0) << std::endl;
+      } else {
+        cout << "Warning: camera at " << gtsam::Symbol(pose_var.key)
+             << " out of img" << endl;
       }
     }
     result_file.close();
