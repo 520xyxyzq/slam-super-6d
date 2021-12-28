@@ -19,7 +19,7 @@ X = gtsam.symbol_shorthand.X
 
 
 # Robusr kernels to be used in PGO
-class Kernels(IntEnum):
+class Kernel(IntEnum):
     Gauss = 0
     MaxMix = 1
     Cauchy = 2
@@ -101,14 +101,15 @@ class PseudoLabeler(object):
         )
         return pose3
 
-    def buildGraph(self, prior_noise, odom_noise, det_noise, kernel, param):
+    def buildGraph(self, prior_noise, odom_noise, det_noise, kernel,
+                   kernel_param=None):
         """
         Return odom and dets at next time step
         @param prior_noise: [1 or 6-array] Prior noise model
         @param odom_noise: [1 or 6-array] Camera odom noise model
         @param det_noise: [1 or 6-array] Detection noise model
         @param kernel: [int] robust kernel to use in PGO
-        @param param: [float] robust kernel param
+        @param kernel_param: [float] robust kernel param (use default if None)
         """
         self._fg_ = gtsam.NonlinearFactorGraph()
         self._init_vals_ = gtsam.Values()
@@ -116,6 +117,48 @@ class PseudoLabeler(object):
         prior_noise_model = self.readNoiseModel(prior_noise)
         odom_noise_model = self.readNoiseModel(odom_noise)
         det_noise_model = self.readNoiseModel(det_noise)
+
+        # Set robust kernel
+        if kernel == Kernel.Gauss:
+            pass
+        elif kernel == Kernel.MaxMix:
+            # TODO: add custom factor
+            pass
+        elif kernel == Kernel.Cauchy:
+            if kernel_param:
+                Cauchy = gtsam.noiseModel.mEstimator.Cauchy(kernel_param)
+            else:
+                Cauchy = gtsam.noiseModel.mEstimator.Cauchy(0.1)
+            det_noise_model = gtsam.noiseModel.Robust(Cauchy, det_noise_model)
+        elif kernel == Kernel.GemanMcClure:
+            if kernel_param:
+                GM = gtsam.noiseModel.mEstimator.GemanMcClure(kernel_param)
+            else:
+                GM = gtsam.noiseModel.mEstimator.GemanMcClure(1.0)
+            det_noise_model = gtsam.noiseModel.Robust(GM, det_noise_model)
+        elif kernel == Kernel.Huber:
+            if kernel_param:
+                Huber = gtsam.noiseModel.mEstimator.Huber(kernel_param)
+            else:
+                Huber = gtsam.noiseModel.mEstimator.Huber(1.345)
+            det_noise_model = gtsam.noiseModel.Robust(Huber, det_noise_model)
+        elif kernel == Kernel.Tukey:
+            if kernel_param:
+                Tukey = gtsam.noiseModel.mEstimator.Tukey(kernel_param)
+            else:
+                Tukey = gtsam.noiseModel.mEstimator.Tukey(4.6851)
+            det_noise_model = gtsam.noiseModel.Robust(Tukey, det_noise_model)
+        elif kernel == Kernel.Welsch:
+            if kernel_param:
+                Welsch = gtsam.noiseModel.mEstimator.Welsch(kernel_param)
+            else:
+                Welsch = gtsam.noiseModel.mEstimator.Welsch(2.9846)
+            det_noise_model = gtsam.noiseModel.Robust(Welsch, det_noise_model)
+        else:
+            assert(False), "Error: Unknown robust kernel type"
+
+        print(det_noise_model)
+        raise()
 
         it = 0
         while it != len(self._odom_):
@@ -134,6 +177,8 @@ class PseudoLabeler(object):
                 )
             # Add cam pose initial estimate
             self._init_vals_.insert(X(it), odom)
+            # Remember previous odom pose to cpmpute relative cam poses
+            self.prev_odom = odom
 
             # Add detection factor
             for ll, det in enumerate(self._dets_):
@@ -146,7 +191,6 @@ class PseudoLabeler(object):
                         gtsam.BetweenFactorPose3(X(it), L(ll), detection,
                                                  det_noise_model)
                     )
-            self.prev_odom = odom
             it += 1
 
     def readNoiseModel(self, noise):
