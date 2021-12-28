@@ -101,6 +101,20 @@ class PseudoLabeler(object):
         )
         return pose3
 
+    def gtsamPose32Tum(self, pose3):
+        """
+        Convert tum format pose to GTSAM Pose3
+        @param pose3: [gtsam.pose3] GTSAM Pose3
+        @return tum_pose: [7-array] x,y,z,qx,qy,qz,qw
+        """
+        tum_pose = np.ones((7,))
+        tum_pose[0:3] = pose3.translation()
+        quat = pose3.rotation().quaternion()
+        # From gtsam wxyz to tum xyzw
+        tum_pose[3:6] = quat[1:]
+        tum_pose[6] = quat[0]
+        return tum_pose
+
     def buildGraph(self, prior_noise, odom_noise, det_noise, kernel,
                    kernel_param=None):
         """

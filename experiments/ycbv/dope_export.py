@@ -417,7 +417,7 @@ if __name__ == "__main__":
         help="Training image name (with extension)",
         default="*-color.png",
     )
-    parser.add_argument("--intrinsics", type=float, nargs="+",
+    parser.add_argument("--intrinsics", type=float, nargs=5,
                         help="Camera intrinsics: fx, fy, cx, cy, s",
                         default=[1066.778, 1067.487, 312.9869, 241.3109, 0])
     parser.add_argument("--width", type=int,
