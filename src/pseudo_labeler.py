@@ -342,10 +342,6 @@ if __name__ == '__main__':
         help="Detection (initial) noise model (std)", default=[0.1]
     )
     parser.add_argument(
-        "--out", type=str, help="Target folder to save the pseudo labels",
-        default="/home/ziqi/Desktop/test"
-    )
-    parser.add_argument(
         "--kernel", "-k", type=int,
         help="Robust kernel used in pose graph optimization", default=0
     )
@@ -357,6 +353,19 @@ if __name__ == '__main__':
     parser.add_argument(
         "--optim", "-op", type=int,
         help="Optimizer for pose graph optimization", default=0
+    )
+    parser.add_argument(
+        "--out", type=str, help="Target folder to save the pseudo labels",
+        default="/home/ziqi/Desktop/test"
+    )
+    parser.add_argument(
+        "--img_dim", "-idim", type=float, nargs=2,
+        help="Image dimension (width, height)", default=[640, 480]
+    )
+    parser.add_argument(
+        "--intrinsics", "-in", type=float, nargs=5,
+        help="Camera intrinsics: fx, fy, cx, cy, s",
+        default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
     )
     parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
