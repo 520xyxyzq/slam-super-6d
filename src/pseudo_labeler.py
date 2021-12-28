@@ -78,6 +78,7 @@ class PseudoLabeler(object):
         @return poses: [dict] {stamp: gtsam.Pose3}
         """
         # TODO: assert tum format here
+        assert(os.path.isfile(txt)), "Error: %s not a file" % (txt)
         rel_poses = np.loadtxt(txt)
         # Read poses into dict of GTSAM poses
         poses = {}
@@ -360,10 +361,13 @@ class PseudoLabeler(object):
                 data, fmt=["%.1f"] + ["%.12f"] * 7
             )
 
-    def plot(self):
+    def plot(self, gt_cam=None):
         """
         Plot estimation results
+        @param gt_cam: [str] (Optional) ground truth camera poses
         """
+        assert(hasattr(self, "_result_")), \
+            "Error: No PGO results yet, please solve PGO before plotting"
         it = 0
         while it != len(self._odom_):
             stamp = self._stamps_[it]
@@ -372,12 +376,27 @@ class PseudoLabeler(object):
                 det_ = det.get(stamp, False)
                 if det_:
                     lm = odom.compose(det_)
-                    fig = gtsam_plot.plot_point3(0, lm.translation(), "r.")
+                    fig = gtsam_plot.plot_point3(0, lm.translation(), "g.")
             it += 1
 
         axes = fig.gca(projection='3d')
         self.plot_traj(axes, self._result_, "b-", 2, "poses")
-        self.plot_traj(axes, self._init_vals_, "k--", 2, "odom")
+        self.plot_traj(axes, self._init_vals_, "g--", 2, "odom")
+        if gt_cam:
+            gt_cam_dict = self.readTum(gt_cam)
+            # Align origin
+            pose_origin = gt_cam_dict[min(gt_cam_dict)]
+            gt_cam_dict = {t: pose_origin.inverse() * p for (t, p)
+                           in gt_cam_dict.items()}
+            gt_cam_array = self.assembleData(gt_cam_dict)
+            axes.plot3D(
+                gt_cam_array[:, 1], gt_cam_array[:, 2], gt_cam_array[:, 3],
+                "k--", linewidth=2, label="ground truth"
+            )
+        for ii in range(len(self._dets_)):
+            lm_point = self._result_.atPose3(L(ii)).translation()
+            gtsam_plot.plot_point3(0, lm_point, "r*")
+
         axes.view_init(azim=-90, elev=-45)
         axes.legend()
         plt.show()
@@ -458,6 +477,14 @@ if __name__ == '__main__':
         default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
     )
     parser.add_argument(
+        "--gt_cam", "-gc", type=str, default=None,
+        help="(Optional) Ground truth camera poses for plot & error analysis"
+    )
+    parser.add_argument(
+        "--gt_obj", "-go", nargs="+", type=str, default=None,
+        help="(Optional) Ground truth obj poses for error analysis"
+    )
+    parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
     )
     args = parser.parse_args()
@@ -469,4 +496,4 @@ if __name__ == '__main__':
     pl.solve(args.optim)
     pl.saveData(target_folder, args.img_dim, args.intrinsics)
     if args.plot:
-        pl.plot()
+        pl.plot(args.gt_cam)
