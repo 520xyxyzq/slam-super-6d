@@ -31,35 +31,37 @@ class PseudoLabeler(object):
         for detf in det_files:
             det = self.readTum(detf)
             self._dets_.append(det)
+            # TODO(ZIQI): check whether det stamps are subset of odom stamps
             assert (len(det) > 0), \
                 "Error: Object det file empty or wrong format"
 
         # Get all time stamps
-        self._stamps_ = list(self._odom_.keys())
-        # Current time pointer
-        self._t_ = 0
+        self._stamps_ = sorted(list(self._odom_.keys()))
 
     def readTum(self, txt):
         """
-        Read poses from txt file (tum format) into np array
+        Read poses from txt file (tum format) into dict of GTSAM poses
         @param txt: [string] Path to the txt file containing poses
-        @return poses: [dict] {stamp: [x,y,z,qx,qy,qz,qw]}
+        @return poses: [dict] {stamp: gtsam.Pose3}
         """
         rel_poses = np.loadtxt(txt)
-
+        # Read poses into dict of GTSAM poses
         poses = {}
         for ii in range(rel_poses.shape[0]):
             # Skip lines with invalid quaternions
             if (qisunit(rel_poses[ii, 4:])):
-                poses[rel_poses[ii, 0]] = self.tum2Pose3(rel_poses[ii, 1:])
+                poses[rel_poses[ii, 0]] = \
+                    self.tum2GtsamPose3(rel_poses[ii, 1:])
         return poses
 
-    def tum2Pose3(self, tum_pose):
+    def tum2GtsamPose3(self, tum_pose):
         """
-        Convert tum format pose to gtsam Pose3
+        Convert tum format pose to GTSAM Pose3
         @param tum_pose: [7-array] x,y,z,qx,qy,qz,qw
         @return pose3: [gtsam.pose3] GTSAM Pose3
         """
+        assert(len(tum_pose) == 7), \
+            "Error: Tum format pose must have 7 entrices"
         tum_pose = np.array(tum_pose)
         # gtsam quaternion order wxyz
         qx, qy, qz = tum_pose[3:-1]
