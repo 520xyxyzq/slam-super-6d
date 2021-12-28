@@ -109,14 +109,47 @@ if __name__ == '__main__':
     parser.add_argument(
         "--odom", "-o", type=str,
         help="Camera odometry file (tum format)",
-        default=root+"/experiments/ycbv/odom/results/0001.txt"
+        default=root + "/experiments/ycbv/odom/results/0001.txt"
     )
     parser.add_argument(
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
         default=[root+"/experiments/ycbv/dets/results/0001_ycb_poses.txt"]
     )
+    parser.add_argument(
+        "--prior_noise", "-pn", nargs="+", type=float,
+        help="Prior noise model (std)", default=[0.01]
+    )
+    parser.add_argument(
+        "--odom_noise", "-on", nargs="+", type=float,
+        help="Camera odometry noise model (std)", default=[0.01]
+    )
+    parser.add_argument(
+        "--det_noise", "-dn", nargs="+", type=float,
+        help="Detection (initial) noise model (std)", default=[0.1]
+    )
+    parser.add_argument(
+        "--out", type=str, help="Target folder to save the pseudo labels",
+        default="/home/ziqi/Desktop/test"
+    )
+    parser.add_argument(
+        "--kernel", "-k", type=int,
+        help="Robust kernel used in pose graph optimization", default=0
+    )
+    parser.add_argument(
+        "--kernel_param", "-kp", type=float,
+        help="Parameter for robust kernel (if None use default)",
+        default=None
+    )
+    parser.add_argument(
+        "--optim", "-op", type=int,
+        help="Optimizer for pose graph optimization", default=0
+    )
+    parser.add_argument(
+        "--plot", "-p", action="store_true", help="Plot results?"
+    )
     args = parser.parse_args()
+    target_folder = args.out if args.out[-1] == "/" else args.out + "/"
 
     pl = PseudoLabeler(args.odom, args.dets)
     pl.main()
