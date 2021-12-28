@@ -157,9 +157,6 @@ class PseudoLabeler(object):
         else:
             assert(False), "Error: Unknown robust kernel type"
 
-        print(det_noise_model)
-        raise()
-
         it = 0
         while it != len(self._odom_):
             stamp = self._stamps_[it]
