@@ -208,9 +208,16 @@ class PseudoLabeler(object):
 
         self._result_ = optim.optimize()
 
+    def save(self, out):
+        """
+        Save data to target folder
+        @param out: [string] Target folder to save results
+        """
+        pass
+
     def plot(self):
         """
-        Solve PGO and generate pseudo labels
+        Plot estimation results
         """
         it = 0
         while it != len(self._odom_):
@@ -220,18 +227,35 @@ class PseudoLabeler(object):
                 det_ = det.get(stamp, False)
                 if det_:
                     lm = odom.compose(det_)
-                    gtsam_plot.plot_point3(0, lm.translation(), "r.")
-            if it % 20 == 0:
-                gtsam_plot.plot_pose3(0, odom, 0.1)
-                fig = gtsam_plot.plot_pose3(
-                    0, self._result_.atPose3(X(it)), 0.1)
-
+                    fig = gtsam_plot.plot_point3(0, lm.translation(), "r.")
             it += 1
 
         axes = fig.gca(projection='3d')
+        self.plot_traj(axes, self._result_, "b-", 2, "poses")
+        self.plot_traj(axes, self._init_vals_, "k--", 2, "odom")
         axes.view_init(azim=-90, elev=-45)
         axes.legend()
         plt.show()
+
+    def plot_traj(self, ax, result, linespec="k-", linewidth=2, label="poses"):
+        """
+        Plot camera trajectory
+        @param ax: [matplotlib.pyplot.plot.plot] Plot before
+        @param result: [gtsam.Values] PGO results (w/ landmark included)
+        @param linespec: [string] line color and type
+        @param linewidth: [float] linewidth
+        @param label: [string] legend for this line
+        """
+        positions = np.zeros((len(self._stamps_), 3))
+        for ii, stamp in enumerate(self._stamps_):
+            pose = result.atPose3(X(ii))
+            positions[ii, 0] = pose.x()
+            positions[ii, 1] = pose.y()
+            positions[ii, 2] = pose.z()
+        ax.plot3D(
+            positions[:, 0], positions[:, 1], positions[:, 2], linespec,
+            linewidth=linewidth, label=label
+        )
 
 
 if __name__ == '__main__':
