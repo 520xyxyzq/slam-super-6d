@@ -12,6 +12,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from transforms3d.quaternions import qisunit
 
+# For GTSAM symbols
+L = gtsam.symbol_shorthand.L
+X = gtsam.symbol_shorthand.X
+
 
 class PseudoLabeler(object):
 
@@ -72,12 +76,111 @@ class PseudoLabeler(object):
         )
         return pose3
 
-    def next(self):
+    def buildGraph(self, prior_noise, odom_noise, det_noise, kernel, param):
         """
         Return odom and dets at next time step
-        @return
+        @param prior_noise: [1 or 6-array] Prior noise model
+        @param odom_noise: [1 or 6-array] Camera odom noise model
+        @param det_noise: [1 or 6-array] Detection noise model
+        @param kernel: [int] robust kernel to use in PGO
+        @param param: [float] robust kernel param
         """
-        pass
+        self._fg_ = gtsam.NonlinearFactorGraph()
+        self._init_vals_ = gtsam.Values()
+
+        prior_noise_model = self.readNoiseModel(prior_noise)
+        odom_noise_model = self.readNoiseModel(odom_noise)
+        det_noise_model = self.readNoiseModel(det_noise)
+
+        it = 0
+        while it != len(self._odom_):
+            stamp = self._stamps_[it]
+            odom = self._odom_[stamp]
+            # Add (prior or) odom factor btw cam poses
+            if it == 0:
+                self._fg_.add(
+                    gtsam.PriorFactorPose3(X(it), odom, prior_noise_model)
+                )
+            else:
+                rel_pose = self.prev_odom.inverse().compose(odom)
+                self._fg_.add(
+                    gtsam.BetweenFactorPose3(X(it - 1), X(it), rel_pose,
+                                             odom_noise_model)
+                )
+            # Add cam pose initial estimate
+            self._init_vals_.insert(X(it), odom)
+
+            # Add detection factor
+            for ll, det in enumerate(self._dets_):
+                detection = det.get(stamp, False)
+                if detection:
+                    # If landmark detected first time, add initial estimate
+                    if not self._init_vals_.exists(L(ll)):
+                        self._init_vals_.insert(L(ll), odom.compose(detection))
+                    self._fg_.add(
+                        gtsam.BetweenFactorPose3(X(it), L(ll), detection,
+                                                 det_noise_model)
+                    )
+            self.prev_odom = odom
+            it += 1
+
+    def readNoiseModel(self, noise):
+        """
+        Read noise as GTSAM noise model
+        @param noise: [1 or 6 array] Noise model
+        @return noise_model: [gtsam.noiseModel] GTSAM noise model
+        """
+        # Read prior noise model
+        # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
+        if len(noise) == 1:
+            noise_model = \
+                gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
+        elif len(noise) == 6:
+            noise_model = \
+                gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
+        else:
+            assert(False), "Error: Prior noise model must have shape 1 or 6"
+        return noise_model
+
+    def solve(self, optimizer):
+        """
+        Solve robust pose graph optimization
+        @param optimizer: [int] NLS optimizer for pose graph optimization
+        @return result: [gtsam.Values] Optimization result
+        """
+        # TODO(ZQ): Add enum class
+        if optimizer == 0:
+            params = gtsam.GaussNewtonParams()
+            params.setVerbosity("ERROR")
+            optim = gtsam.GaussNewtonOptimizer(
+                self._fg_, self._init_vals_, params
+            )
+        elif optimizer == 1:
+            params = gtsam.LevenbergMarquardtParams()
+            params.setVerbosity("ERROR")
+            optim = gtsam.LevenbergMarquardtOptimizer(
+                self._fg_, self._init_vals_, params
+            )
+        elif optimizer == 2:
+            params = gtsam.GaussNewtonParams()
+            params.setVerbosity("ERROR")
+            params = gtsam.GncGaussNewtonParams(params)
+            optim = gtsam.GncGaussNewtonOptimizer(
+                self._fg_, self._init_vals_, params
+            )
+        elif optimizer == 3:
+            params = gtsam.LevenbergMarquardtParams()
+            params.setVerbosity("ERROR")
+            params = gtsam.GncLMParams()
+            optim = gtsam.GncLMOptimizer(
+                self._fg_, self._init_vals_, params
+            )
+        else:
+            assert(False), "Error: Unknown optimizer type"
+
+        result = optim.optimize()
+        # result.print()
+        return result
 
     def main(self):
         """
@@ -154,4 +257,7 @@ if __name__ == '__main__':
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
 
     pl = PseudoLabeler(args.odom, args.dets)
+    pl.buildGraph(args.prior_noise, args.odom_noise,
+                  args.det_noise, args.kernel, args.kernel_param)
+    pl.solve(args.optim)
     pl.main()
