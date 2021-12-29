@@ -124,7 +124,7 @@ class PseudoLabeler(object):
         return tum_pose
 
     def buildGraph(self, prior_noise, odom_noise, det_noise, kernel,
-                   kernel_param=None):
+                   kernel_param=None, init=None):
         """
         Return odom and dets at next time step
         @param prior_noise: [1 or 6-array] Prior noise model
@@ -132,9 +132,14 @@ class PseudoLabeler(object):
         @param det_noise: [1 or 6-array or dict] Detection noise model
         @param kernel: [int] robust kernel to use in PGO
         @param kernel_param: [float] robust kernel param (use default if None)
+        @param init: [gtsam.Values] User defined initial values for re-init
         """
         self._fg_ = gtsam.NonlinearFactorGraph()
-        self._init_vals_ = gtsam.Values()
+        # TODO(ZQ): check init keys match all fg variables
+        if init:
+            self._init_vals_ = init
+        else:
+            self._init_vals_ = gtsam.Values()
 
         # Read noise models
         prior_noise_model = self.readNoiseModel(prior_noise)
@@ -227,7 +232,8 @@ class PseudoLabeler(object):
                                              odom_noise_model)
                 )
             # Add cam pose initial estimate
-            self._init_vals_.insert(X(it), odom)
+            if not init:
+                self._init_vals_.insert(X(it), odom)
             # Remember previous odom pose to cpmpute relative cam poses
             self.prev_odom = odom
 
@@ -237,7 +243,7 @@ class PseudoLabeler(object):
                 if detection:
                     # If landmark detected first time, add initial estimate
                     # TODO(zq): what if 1st pose det is outlier
-                    if not self._init_vals_.exists(L(ll)):
+                    if not init and not self._init_vals_.exists(L(ll)):
                         self._init_vals_.insert(L(ll), odom.compose(detection))
                     if isdict:
                         det_nm = det_noise_model[(X(it), L(ll))]
