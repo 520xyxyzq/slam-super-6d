@@ -129,16 +129,23 @@ class PseudoLabeler(object):
         Return odom and dets at next time step
         @param prior_noise: [1 or 6-array] Prior noise model
         @param odom_noise: [1 or 6-array] Camera odom noise model
-        @param det_noise: [1 or 6-array] Detection noise model
+        @param det_noise: [1 or 6-array or dict] Detection noise model
         @param kernel: [int] robust kernel to use in PGO
         @param kernel_param: [float] robust kernel param (use default if None)
         """
         self._fg_ = gtsam.NonlinearFactorGraph()
         self._init_vals_ = gtsam.Values()
 
+        # Read noise models
         prior_noise_model = self.readNoiseModel(prior_noise)
         odom_noise_model = self.readNoiseModel(odom_noise)
-        det_noise_model = self.readNoiseModel(det_noise)
+        # Allow for different noise models for det factors, i.e. use dict
+        # The flag isdict indicates whether noise model is factor dependent
+        isdict = type(det_noise) is dict
+        if isdict:
+            det_noise_model = det_noise
+        else:
+            det_noise_model = self.readNoiseModel(det_noise)
 
         # Set robust kernel
         if kernel == Kernel.Gauss:
@@ -151,34 +158,59 @@ class PseudoLabeler(object):
                 Cauchy = gtsam.noiseModel.mEstimator.Cauchy(kernel_param)
             else:
                 Cauchy = gtsam.noiseModel.mEstimator.Cauchy(0.1)
-            det_noise_model = gtsam.noiseModel.Robust(Cauchy, det_noise_model)
+            if isdict:
+                det_noise_model = {k: gtsam.noiseModel.Robust(Cauchy, n)
+                                   for (k, n) in det_noise.items()}
+            else:
+                det_noise_model = \
+                    gtsam.noiseModel.Robust(Cauchy, det_noise_model)
         elif kernel == Kernel.GemanMcClure:
             if kernel_param:
                 GM = gtsam.noiseModel.mEstimator.GemanMcClure(kernel_param)
             else:
                 GM = gtsam.noiseModel.mEstimator.GemanMcClure(1.0)
-            det_noise_model = gtsam.noiseModel.Robust(GM, det_noise_model)
+            if isdict:
+                det_noise_model = {k: gtsam.noiseModel.Robust(GM, n)
+                                   for (k, n) in det_noise.items()}
+            else:
+                det_noise_model = gtsam.noiseModel.Robust(GM, det_noise_model)
         elif kernel == Kernel.Huber:
             if kernel_param:
                 Huber = gtsam.noiseModel.mEstimator.Huber(kernel_param)
             else:
                 Huber = gtsam.noiseModel.mEstimator.Huber(1.345)
-            det_noise_model = gtsam.noiseModel.Robust(Huber, det_noise_model)
+            if isdict:
+                det_noise_model = {k: gtsam.noiseModel.Robust(Huber, n)
+                                   for (k, n) in det_noise.items()}
+            else:
+                det_noise_model = \
+                    gtsam.noiseModel.Robust(Huber, det_noise_model)
         elif kernel == Kernel.Tukey:
             if kernel_param:
                 Tukey = gtsam.noiseModel.mEstimator.Tukey(kernel_param)
             else:
                 Tukey = gtsam.noiseModel.mEstimator.Tukey(4.6851)
-            det_noise_model = gtsam.noiseModel.Robust(Tukey, det_noise_model)
+            if isdict:
+                det_noise_model = {k: gtsam.noiseModel.Robust(Tukey, n)
+                                   for (k, n) in det_noise.items()}
+            else:
+                det_noise_model = \
+                    gtsam.noiseModel.Robust(Tukey, det_noise_model)
         elif kernel == Kernel.Welsch:
             if kernel_param:
                 Welsch = gtsam.noiseModel.mEstimator.Welsch(kernel_param)
             else:
                 Welsch = gtsam.noiseModel.mEstimator.Welsch(2.9846)
-            det_noise_model = gtsam.noiseModel.Robust(Welsch, det_noise_model)
+            if isdict:
+                det_noise_model = {k: gtsam.noiseModel.Robust(Welsch, n)
+                                   for (k, n) in det_noise.items()}
+            else:
+                det_noise_model = \
+                    gtsam.noiseModel.Robust(Welsch, det_noise_model)
         else:
             assert(False), "Error: Unknown robust kernel type"
 
+        # Build graph
         it = 0
         while it != len(self._odom_):
             stamp = self._stamps_[it]
@@ -204,11 +236,16 @@ class PseudoLabeler(object):
                 detection = det.get(stamp, False)
                 if detection:
                     # If landmark detected first time, add initial estimate
+                    # TODO(zq): what if 1st pose det is outlier
                     if not self._init_vals_.exists(L(ll)):
                         self._init_vals_.insert(L(ll), odom.compose(detection))
+                    if isdict:
+                        det_nm = det_noise_model[(X(it), L(ll))]
+                    else:
+                        det_nm = det_noise_model
                     self._fg_.add(
                         gtsam.BetweenFactorPose3(X(it), L(ll), detection,
-                                                 det_noise_model)
+                                                 det_nm)
                     )
             it += 1
 
@@ -227,7 +264,7 @@ class PseudoLabeler(object):
             noise_model = \
                 gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
         else:
-            assert(False), "Error: Prior noise model must have shape 1 or 6"
+            assert(False), "Error: Noise model must have shape 1 or 6"
         return noise_model
 
     def solve(self, optimizer, verbose=False):
