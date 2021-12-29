@@ -11,6 +11,8 @@ import gtsam
 import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
+from evo.core import metrics, sync
+from evo.tools import file_interface
 from transforms3d.quaternions import qisunit
 
 # For GTSAM symbols
@@ -360,6 +362,31 @@ class PseudoLabeler(object):
                 out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                 data, fmt=["%.1f"] + ["%.12f"] * 7
             )
+
+    def ape(self, traj_ref, traj_est, align_origin=False,
+            pose_relation=metrics.PoseRelation.translation_part):
+        """
+        Compute APE btw 2 trajectories or 2 sets of detections
+        @param traj_ref: [string] Reference trajectory file (tum format)
+        @param traj_est: [string] Estimated trajectory file (tum format)
+        @param align_origin: [bool] Align the origin of two trajs?
+        @param pose_relation: [string] Metric used to compare poses,
+        e.g. "translation part", "rotation angle in radians", etc.
+        """
+        assert(os.path.isfile(traj_ref)), "Error: %s not a file" % (traj_ref)
+        assert(os.path.isfile(traj_est)), "Error: %s not a file" % (traj_est)
+        # Read traj
+        ref = file_interface.read_tum_trajectory_file(traj_ref)
+        est = file_interface.read_tum_trajectory_file(traj_est)
+        # Associate trajectories using time stamps
+        ref, est = sync.associate_trajectories(ref, est)
+        if align_origin:
+            est.align_origin(ref)
+        data = (ref, est)
+        ape_metric = metrics.APE(pose_relation)
+        ape_metric.process_data(data)
+        ape_stats = ape_metric.get_all_statistics()
+        return ape_stats
 
     def plot(self, gt_cam=None):
         """
