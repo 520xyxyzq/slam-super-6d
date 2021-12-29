@@ -230,10 +230,11 @@ class PseudoLabeler(object):
             assert(False), "Error: Prior noise model must have shape 1 or 6"
         return noise_model
 
-    def solve(self, optimizer):
+    def solve(self, optimizer, verbose=False):
         """
         Solve robust pose graph optimization
         @param optimizer: [int] NLS optimizer for pose graph optimization
+        @param verbose: [bool] Print optimization stats?
         @return result: [gtsam.Values] Optimization result
         """
         # Make sure solve is called after buildGraph()
@@ -242,13 +243,15 @@ class PseudoLabeler(object):
 
         if optimizer == Optimizer.GaussNewton:
             params = gtsam.GaussNewtonParams()
-            params.setVerbosity("ERROR")
+            if verbose:
+                params.setVerbosity("ERROR")
             optim = gtsam.GaussNewtonOptimizer(
                 self._fg_, self._init_vals_, params
             )
         elif optimizer == Optimizer.LevenbergMarquardt:
             params = gtsam.LevenbergMarquardtParams()
-            params.setVerbosity("ERROR")
+            if verbose:
+                params.setVerbosity("ERROR")
             optim = gtsam.LevenbergMarquardtOptimizer(
                 self._fg_, self._init_vals_, params
             )
@@ -283,9 +286,10 @@ class PseudoLabeler(object):
         """
         pass
 
-    def recomputeDets(self):
+    def recomputeDets(self, verbose=False):
         """
         Recompute object pose detections (i.e. Pseudo labels) from PGO results
+        @param verbose: [bool] Print object out of image message?
         @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
         """
         self._plabels_ = []
@@ -299,8 +303,9 @@ class PseudoLabeler(object):
                 rel_obj_pose = cam_pose.inverse().compose(lm_pose)
                 # Skip is object center not in image
                 if not self.isInImage(rel_obj_pose):
-                    print("Obj %d not in image at stamp %.1f" %
-                          (ii, stamp))
+                    if verbose:
+                        print("Obj %d not in image at stamp %.1f" %
+                              (ii, stamp))
                     continue
                 obj_dets[stamp] = rel_obj_pose
             self._plabels_.append(obj_dets)
@@ -338,12 +343,13 @@ class PseudoLabeler(object):
             data[ii, 1:] = self.gtsamPose32Tum(data_dict[stamp])
         return data
 
-    def saveData(self, out, img_dim, intrinsics):
+    def saveData(self, out, img_dim, intrinsics, verbose=False):
         """
         Save data to target folder
         @param out: [string] Target folder to save results
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
+        @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
         self._K_ = gtsam.Cal3_S2(
@@ -354,7 +360,7 @@ class PseudoLabeler(object):
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before saving data"
         # Recompute obj pose detections
-        self.recomputeDets()
+        self.recomputeDets(verbose)
         for ii, plabel in enumerate(self._plabels_):
             data = self.assembleData(plabel)
             out_fname = self._det_fnames_[ii]
@@ -362,6 +368,57 @@ class PseudoLabeler(object):
                 out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                 data, fmt=["%.1f"] + ["%.12f"] * 7
             )
+
+    def error(self, out, gt_dets=None, verbose=False, save=False):
+        """
+        Error analysis for pseudo labels of object pose detections
+        @param out: [string] Target folder to save error.txt
+        @param gt_dets: [list of strings] ground truth object pose detections
+        @param save: [bool] Save errors to file?
+        @return trans_error: [list of dict] Error stats for translation part
+        @return rot_error: [list of dict] Error stats for rotation part (rad)
+        """
+        assert(hasattr(self, "_plabels_")), \
+            "Error: No pseudo labels yet, generate data before error analysis"
+        if gt_dets is None:
+            return
+        assert(len(gt_dets) == len(self._dets_)), \
+            "Error: #Ground truth detection files != #detection files"
+        trans_error, rot_error = [], []
+        for ii, gt_det in enumerate(gt_dets):
+            out_fname = self._det_fnames_[ii]
+            out_fname = out + out_fname[:-4] + \
+                "_obj" + str(ii) + out_fname[-4:]
+            t_error = self.ape(
+                gt_det, out_fname,
+                pose_relation=metrics.PoseRelation.translation_part
+            )
+            r_error = self.ape(
+                gt_det, out_fname,
+                pose_relation=metrics.PoseRelation.rotation_angle_rad
+            )
+            trans_error.append(t_error)
+            rot_error.append(r_error)
+            t_mean, t_median, t_std = \
+                t_error["mean"], t_error["median"], t_error["std"]
+            r_mean, r_median, r_std = \
+                r_error["mean"], r_error["median"], r_error["std"]
+            if verbose:
+                print("Object %d error: " % (ii))
+                print("  Translation part (m): ")
+                print("    mean: %.6f; median: %.6f; std:  %.6f" %
+                      (t_mean, t_median, t_std))
+                print("  Rotation part (rad): ")
+                print("    mean: %.6f; median: %.6f; std:  %.6f" %
+                      (r_mean, r_median, r_std))
+        return trans_error, rot_error
+
+    def saveError(self, out, trans_error, rot_error):
+        """
+        Save error stats to file
+        """
+        # TODO: implement saveError function
+        pass
 
     def ape(self, traj_ref, traj_est, align_origin=False,
             pose_relation=metrics.PoseRelation.translation_part):
@@ -514,13 +571,17 @@ if __name__ == '__main__':
     parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
     )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Print?"
+    )
     args = parser.parse_args()
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
 
     pl = PseudoLabeler(args.odom, args.dets)
     pl.buildGraph(args.prior_noise, args.odom_noise,
                   args.det_noise, args.kernel, args.kernel_param)
-    pl.solve(args.optim)
-    pl.saveData(target_folder, args.img_dim, args.intrinsics)
+    pl.solve(args.optim, verbose=args.verbose)
+    pl.saveData(target_folder, args.img_dim, args.intrinsics, args.verbose)
+    pl.error(target_folder, args.gt_obj, verbose=args.verbose)
     if args.plot:
         pl.plot(args.gt_cam)
