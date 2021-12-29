@@ -286,6 +286,22 @@ class PseudoLabeler(object):
         """
         pass
 
+    def getFactorErrors(self, fg, result):
+        """
+        Get unwhitened error at all factors
+        @param fg: [gtsam.NonlinearFactorGraph] Factor graph
+        @param result: [gtsam.Values] PGO results
+        @return errors: [dict{tuple:array}] Factor errors indexed by keys;
+        Error order rpyxyz
+        """
+        errors = {}
+        for ii in range(fg.size()):
+            factor = fg.at(ii)
+            keytuple = tuple(factor.keys())
+            error = factor.unwhitenedError(result)
+            errors[keytuple] = error
+        return errors
+
     def recomputeDets(self, verbose=False):
         """
         Recompute object pose detections (i.e. Pseudo labels) from PGO results
