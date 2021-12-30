@@ -159,10 +159,9 @@ class PseudoLabeler(object):
             # TODO: add custom factor
             pass
         elif kernel == Kernel.Cauchy:
-            if kernel_param:
-                Cauchy = gtsam.noiseModel.mEstimator.Cauchy(kernel_param)
-            else:
-                Cauchy = gtsam.noiseModel.mEstimator.Cauchy(0.1)
+            Cauchy = gtsam.noiseModel.mEstimator.Cauchy(
+                kernel_param if kernel_param else 0.1
+            )
             if isdict:
                 det_noise_model = {k: gtsam.noiseModel.Robust(Cauchy, n)
                                    for (k, n) in det_noise.items()}
@@ -170,20 +169,18 @@ class PseudoLabeler(object):
                 det_noise_model = \
                     gtsam.noiseModel.Robust(Cauchy, det_noise_model)
         elif kernel == Kernel.GemanMcClure:
-            if kernel_param:
-                GM = gtsam.noiseModel.mEstimator.GemanMcClure(kernel_param)
-            else:
-                GM = gtsam.noiseModel.mEstimator.GemanMcClure(1.0)
+            GM = gtsam.noiseModel.mEstimator.GemanMcClure(
+                kernel_param if kernel_param else 1.0
+            )
             if isdict:
                 det_noise_model = {k: gtsam.noiseModel.Robust(GM, n)
                                    for (k, n) in det_noise.items()}
             else:
                 det_noise_model = gtsam.noiseModel.Robust(GM, det_noise_model)
         elif kernel == Kernel.Huber:
-            if kernel_param:
-                Huber = gtsam.noiseModel.mEstimator.Huber(kernel_param)
-            else:
-                Huber = gtsam.noiseModel.mEstimator.Huber(1.345)
+            Huber = gtsam.noiseModel.mEstimator.Huber(
+                kernel_param if kernel_param else 1.345
+            )
             if isdict:
                 det_noise_model = {k: gtsam.noiseModel.Robust(Huber, n)
                                    for (k, n) in det_noise.items()}
@@ -191,10 +188,9 @@ class PseudoLabeler(object):
                 det_noise_model = \
                     gtsam.noiseModel.Robust(Huber, det_noise_model)
         elif kernel == Kernel.Tukey:
-            if kernel_param:
-                Tukey = gtsam.noiseModel.mEstimator.Tukey(kernel_param)
-            else:
-                Tukey = gtsam.noiseModel.mEstimator.Tukey(4.6851)
+            Tukey = gtsam.noiseModel.mEstimator.Tukey(
+                kernel_param if kernel_param else 4.6851
+            )
             if isdict:
                 det_noise_model = {k: gtsam.noiseModel.Robust(Tukey, n)
                                    for (k, n) in det_noise.items()}
@@ -202,10 +198,10 @@ class PseudoLabeler(object):
                 det_noise_model = \
                     gtsam.noiseModel.Robust(Tukey, det_noise_model)
         elif kernel == Kernel.Welsch:
-            if kernel_param:
-                Welsch = gtsam.noiseModel.mEstimator.Welsch(kernel_param)
-            else:
-                Welsch = gtsam.noiseModel.mEstimator.Welsch(2.9846)
+
+            Welsch = gtsam.noiseModel.mEstimator.Welsch(
+                kernel_param if kernel_param else 2.9846
+            )
             if isdict:
                 det_noise_model = {k: gtsam.noiseModel.Robust(Welsch, n)
                                    for (k, n) in det_noise.items()}
