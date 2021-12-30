@@ -578,37 +578,36 @@ if __name__ == '__main__':
         default=[root + "/experiments/ycbv/dets/results/0001_ycb_poses.txt"]
     )
     parser.add_argument(
-        "--prior_noise", "-pn", nargs="+", type=float,
-        help="Prior noise model (std)", default=[0.01]
+        "--prior_noise", "-pn", nargs="+", type=float, default=[0.01],
+        help="Prior noise model (std)"
     )
     parser.add_argument(
-        "--odom_noise", "-on", nargs="+", type=float,
-        help="Camera odometry noise model (std)", default=[0.01]
+        "--odom_noise", "-on", nargs="+", type=float, default=[0.01],
+        help="Camera odometry noise model (std)"
     )
     parser.add_argument(
-        "--det_noise", "-dn", nargs="+", type=float,
-        help="Detection (initial) noise model (std)", default=[0.1]
+        "--det_noise", "-dn", nargs="+", type=float, default=[0.1],
+        help="Detection (initial) noise model (std)"
     )
     parser.add_argument(
-        "--kernel", "-k", type=int,
-        help="Robust kernel used in pose graph optimization", default=0
+        "--kernel", "-k", type=int, default=0,
+        help="Robust kernel used in pose graph optimization"
     )
     parser.add_argument(
-        "--kernel_param", "-kp", type=float,
-        help="Parameter for robust kernel (if None use default)",
-        default=None
+        "--kernel_param", "-kp", type=float, default=None,
+        help="Parameter for robust kernel (if None use default)"
     )
     parser.add_argument(
-        "--optim", "-op", type=int,
-        help="Optimizer for pose graph optimization", default=0
+        "--optim", "-op", type=int, default=0,
+        help="Optimizer for pose graph optimization"
     )
     parser.add_argument(
         "--out", type=str, help="Target folder to save the pseudo labels",
         default="/home/ziqi/Desktop/test"
     )
     parser.add_argument(
-        "--img_dim", "-idim", type=float, nargs=2,
-        help="Image dimension (width, height)", default=[640, 480]
+        "--img_dim", "-idim", type=float, nargs=2, default=[640, 480],
+        help="Image dimension (width, height)"
     )
     parser.add_argument(
         "--intrinsics", "-in", type=float, nargs=5,
@@ -622,6 +621,14 @@ if __name__ == '__main__':
     parser.add_argument(
         "--gt_obj", "-go", nargs="+", type=str, default=None,
         help="(Optional) Ground truth obj poses for error analysis"
+    )
+    parser.add_argument(
+        "--lmd", "-l", type=float, default=1,
+        help="Regularization coefficient for the joint optimization"
+    )
+    parser.add_argument(
+        "--joint", "-j", action="store_true",
+        help="Auto-tune detection noise model?"
     )
     parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
