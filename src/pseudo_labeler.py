@@ -147,10 +147,8 @@ class PseudoLabeler(object):
         # Allow for different noise models for det factors, i.e. use dict
         # The flag isdict indicates whether noise model is factor dependent
         isdict = type(det_noise) is dict
-        if isdict:
-            det_noise_model = det_noise
-        else:
-            det_noise_model = self.readNoiseModel(det_noise)
+        det_noise_model = \
+            det_noise if isdict else self.readNoiseModel(det_noise)
 
         # Set robust kernel
         if kernel == Kernel.Gauss:
@@ -158,56 +156,34 @@ class PseudoLabeler(object):
         elif kernel == Kernel.MaxMix:
             # TODO: add custom factor
             pass
-        elif kernel == Kernel.Cauchy:
-            Cauchy = gtsam.noiseModel.mEstimator.Cauchy(
-                kernel_param if kernel_param else 0.1
-            )
+        elif kernel in [Kernel.Cauchy, Kernel.GemanMcClure, Kernel.Huber,
+                        Kernel.Tukey, Kernel.Welsch]:
+            if kernel == Kernel.Cauchy:
+                robust = gtsam.noiseModel.mEstimator.Cauchy(
+                    kernel_param if kernel_param else 0.1
+                )
+            elif kernel == Kernel.GemanMcClure:
+                robust = gtsam.noiseModel.mEstimator.GemanMcClure(
+                    kernel_param if kernel_param else 1.0
+                )
+            elif kernel == Kernel.Huber:
+                robust = gtsam.noiseModel.mEstimator.Huber(
+                    kernel_param if kernel_param else 1.345
+                )
+            elif kernel == Kernel.Tukey:
+                robust = gtsam.noiseModel.mEstimator.Tukey(
+                    kernel_param if kernel_param else 4.6851
+                )
+            elif kernel == Kernel.Welsch:
+                robust = gtsam.noiseModel.mEstimator.Welsch(
+                    kernel_param if kernel_param else 2.9846
+                )
             if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(Cauchy, n)
+                det_noise_model = {k: gtsam.noiseModel.Robust(robust, n)
                                    for (k, n) in det_noise.items()}
             else:
                 det_noise_model = \
-                    gtsam.noiseModel.Robust(Cauchy, det_noise_model)
-        elif kernel == Kernel.GemanMcClure:
-            GM = gtsam.noiseModel.mEstimator.GemanMcClure(
-                kernel_param if kernel_param else 1.0
-            )
-            if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(GM, n)
-                                   for (k, n) in det_noise.items()}
-            else:
-                det_noise_model = gtsam.noiseModel.Robust(GM, det_noise_model)
-        elif kernel == Kernel.Huber:
-            Huber = gtsam.noiseModel.mEstimator.Huber(
-                kernel_param if kernel_param else 1.345
-            )
-            if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(Huber, n)
-                                   for (k, n) in det_noise.items()}
-            else:
-                det_noise_model = \
-                    gtsam.noiseModel.Robust(Huber, det_noise_model)
-        elif kernel == Kernel.Tukey:
-            Tukey = gtsam.noiseModel.mEstimator.Tukey(
-                kernel_param if kernel_param else 4.6851
-            )
-            if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(Tukey, n)
-                                   for (k, n) in det_noise.items()}
-            else:
-                det_noise_model = \
-                    gtsam.noiseModel.Robust(Tukey, det_noise_model)
-        elif kernel == Kernel.Welsch:
-
-            Welsch = gtsam.noiseModel.mEstimator.Welsch(
-                kernel_param if kernel_param else 2.9846
-            )
-            if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(Welsch, n)
-                                   for (k, n) in det_noise.items()}
-            else:
-                det_noise_model = \
-                    gtsam.noiseModel.Robust(Welsch, det_noise_model)
+                    gtsam.noiseModel.Robust(robust, det_noise_model)
         else:
             assert(False), "Error: Unknown robust kernel type"
 
