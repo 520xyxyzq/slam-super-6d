@@ -320,10 +320,21 @@ class PseudoLabeler(object):
                 init_vals
             )
             self.solve(optimizer, verbose)
+
             # Update errors
             prev_error = error
-            error = self._fg_.error(self._result_)
+            # NOTE: The joint loss has an extra term (regularization)
+            if type(det_noise) == dict:
+                regular = lmd * np.sum([
+                    np.linalg.norm(n.sigmas())**2 for (k, n) in
+                    det_noise.items() if len(k) == 2 and self.isObjKey(k[1])
+                ])
+            else:
+                n_edges = sum([len(det) for det in self._dets_])
+                regular = lmd * n_edges * np.linalg.norm(det_noise)**2
+            error = self._fg_.error(self._result_) + regular
             rel_err = (prev_error - error) / prev_error
+
             # Recompute noise models
             factor_errors = self.getFactorErrors(self._fg_, self._result_)
             det_noise = self.recomputeNoiseModel(
@@ -332,10 +343,12 @@ class PseudoLabeler(object):
             # Reinitialize using estimates from last iteration
             init_vals = self._result_
             count += 1
+            if verbose:
+                print("Joint loss at step %d: %.6f" % (count, error))
 
         # Log stopping reason
         if prev_error < error and verbose:
-            print("Stopping iterations because error increased")
+            print("Warning: Stopping iterations because error increased")
         if error <= abs_tol and verbose:
             print("Converged! Absolute error %.6f < %.6f" % (error, abs_tol))
         if prev_error > error and rel_err <= rel_tol and verbose:
@@ -387,6 +400,7 @@ class PseudoLabeler(object):
         @return noise_models: [dict{tuple:array}] optimal noise model
         """
         # TODO(zq): Guard against 0 errors
+        assert(len(errors) > 0), "Error: Factor errors empty!"
         if kernel == Kernel.Gauss:
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
@@ -397,7 +411,9 @@ class PseudoLabeler(object):
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
                  for (k, e) in errors.items()}
         else:
-            # TODO(ZQ): Can we generalize to optimization w/ robust kernels?
+            # Can we generalize this to robust kernels?
+            # Maybe the reweighting process already robustifies the cost func
+            print("Warning: No convergence guarantee if reweight w/ kernels")
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
                  for (k, e) in errors.items()}
