@@ -12,6 +12,7 @@ import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
 from evo.core import metrics, sync
+from evo.main_ape import ape as ape_result
 from evo.tools import file_interface
 from transforms3d.quaternions import qisunit
 
@@ -136,10 +137,7 @@ class PseudoLabeler(object):
         """
         self._fg_ = gtsam.NonlinearFactorGraph()
         # TODO(ZQ): check init keys match all fg variables
-        if init:
-            self._init_vals_ = init
-        else:
-            self._init_vals_ = gtsam.Values()
+        self._init_vals_ = init if init else gtsam.Values()
 
         # Read noise models
         prior_noise_model = self.readNoiseModel(prior_noise)
@@ -504,12 +502,11 @@ class PseudoLabeler(object):
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
-        Error analysis for pseudo labels of object pose detections
-        @param out: [string] Target folder to save error.txt
+        Print and save errors for pseudo labels of object pose detections
+        @param out: [string] Target folder to save data
         @param gt_dets: [list of strings] ground truth object pose detections
+        @param verbose: [bool] Print error stats?
         @param save: [bool] Save errors to file?
-        @return trans_error: [list of dict] Error stats for translation part
-        @return rot_error: [list of dict] Error stats for rotation part (rad)
         """
         assert(hasattr(self, "_plabels_")), \
             "Error: No pseudo labels yet, generate data before error analysis"
@@ -517,21 +514,20 @@ class PseudoLabeler(object):
             return
         assert(len(gt_dets) == len(self._dets_)), \
             "Error: #Ground truth detection files != #detection files"
-        trans_error, rot_error = [], []
         for ii, gt_det in enumerate(gt_dets):
             out_fname = self._det_fnames_[ii]
             out_fname = out + out_fname[:-4] + \
                 "_obj" + str(ii) + out_fname[-4:]
             t_error = self.ape(
-                gt_det, out_fname,
-                pose_relation=metrics.PoseRelation.translation_part
+                gt_det, out_fname, save=save,
+                pose_relation=metrics.PoseRelation.translation_part,
+                out=out_fname[:-4] + "_t_error.zip"
             )
             r_error = self.ape(
-                gt_det, out_fname,
-                pose_relation=metrics.PoseRelation.rotation_angle_rad
+                gt_det, out_fname, save=save,
+                pose_relation=metrics.PoseRelation.rotation_angle_rad,
+                out=out_fname[:-4] + "_r_error.zip"
             )
-            trans_error.append(t_error)
-            rot_error.append(r_error)
             t_mean, t_median, t_std = \
                 t_error["mean"], t_error["median"], t_error["std"]
             r_mean, r_median, r_std = \
@@ -544,17 +540,10 @@ class PseudoLabeler(object):
                 print("  Rotation part (rad): ")
                 print("    mean: %.6f; median: %.6f; std:  %.6f" %
                       (r_mean, r_median, r_std))
-        return trans_error, rot_error
-
-    def saveError(self, out, trans_error, rot_error):
-        """
-        Save error stats to file
-        """
-        # TODO: implement saveError function
-        pass
 
     def ape(self, traj_ref, traj_est, align_origin=False,
-            pose_relation=metrics.PoseRelation.translation_part):
+            pose_relation=metrics.PoseRelation.translation_part,
+            save=False, out=None):
         """
         Compute APE btw 2 trajectories or 2 sets of detections
         @param traj_ref: [string] Reference trajectory file (tum format)
@@ -562,6 +551,9 @@ class PseudoLabeler(object):
         @param align_origin: [bool] Align the origin of two trajs?
         @param pose_relation: [string] Metric used to compare poses,
         e.g. "translation part", "rotation angle in radians", etc.
+        @param save: [bool] Save the result?
+        @param out: [str] Path to save the result
+        @return ape_stats: [dict] APE stats for the two trajs
         """
         assert(os.path.isfile(traj_ref)), "Error: %s not a file" % (traj_ref)
         assert(os.path.isfile(traj_est)), "Error: %s not a file" % (traj_est)
@@ -575,8 +567,13 @@ class PseudoLabeler(object):
         data = (ref, est)
         ape_metric = metrics.APE(pose_relation)
         ape_metric.process_data(data)
-        ape_stats = ape_metric.get_all_statistics()
-        return ape_stats
+        if save:
+            assert(out is not None), "Error: APE result save path unspecified"
+            result = ape_result(
+                ref, est, pose_relation, align_origin=align_origin
+            )
+            file_interface.save_res_file(out, result)
+        return ape_metric.get_all_statistics()
 
     def plot(self, gt_cam=None):
         """
@@ -712,6 +709,9 @@ if __name__ == '__main__':
         "--plot", "-p", action="store_true", help="Plot results?"
     )
     parser.add_argument(
+        "--save", "-s", action="store_true", help="Save error statistics?"
+    )
+    parser.add_argument(
         "--verbose", "-v", action="store_true", help="Print?"
     )
     args = parser.parse_args()
@@ -729,6 +729,6 @@ if __name__ == '__main__':
         pl.solve(args.optim, verbose=args.verbose)
 
     pl.saveData(target_folder, args.img_dim, args.intrinsics, args.verbose)
-    pl.error(target_folder, args.gt_obj, verbose=args.verbose)
+    pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
     if args.plot:
         pl.plot(args.gt_cam)
