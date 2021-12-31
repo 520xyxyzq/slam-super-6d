@@ -293,13 +293,56 @@ class PseudoLabeler(object):
 
         self._result_ = optim.optimize()
 
-    def solveByIter(self, optimizer):
+    def solveByIter(self, prior_noise, odom_noise, det_noise, kernel,
+                    kernel_param, optimizer, lmd=1, abs_tol=1e-5,
+                    rel_tol=1e-2, max_iter=20, verbose=False):
         """
         Jointly optimize SLAM variables and detection noise models by
         alternative minimization
+        @param prior_noise: [1 or 6-array] Prior noise model
+        @param odom_noise: [1 or 6-array] Camera odom noise model
+        @param det_noise: [1 or 6-array] INITIAL detection noise model
+        @param kernel: [int] robust kernel to use in PGO
+        @param kernel_param: [float] robust kernel param (use default if None
         @param optimizer: [int] NLS optimizer for pose graph optimization
+        @param lmd: [float] Regularization coefficient
+        @param abs_tol: [float] absolute error threshold
+        @param rel_tol: [float] relative error decrease threshold
+        @param max_iter: [int] Maxmimum number of iterations
+        @param verbose: [bool] Print optimization stats?
         """
-        pass
+        prev_error, error, rel_err, count = 1e20, 1e19, 1e10, 0
+        init_vals = None
+        while prev_error > error and error > abs_tol and rel_err > rel_tol \
+                and count < max_iter:
+            self.buildGraph(
+                prior_noise, odom_noise, det_noise, kernel, kernel_param,
+                init_vals
+            )
+            self.solve(optimizer, verbose)
+            # Update errors
+            prev_error = error
+            error = self._fg_.error(self._result_)
+            rel_err = (prev_error - error) / prev_error
+            # Recompute noise models
+            factor_errors = self.getFactorErrors(self._fg_, self._result_)
+            det_noise = self.recomputeNoiseModel(
+                factor_errors, kernel, kernel_param, lmd
+            )
+            # Reinitialize using estimates from last iteration
+            init_vals = self._result_
+            count += 1
+
+        # Log stopping reason
+        if prev_error < error and verbose:
+            print("Stopping iterations because error increased")
+        if error <= abs_tol and verbose:
+            print("Converged! Absolute error %.6f < %.6f" % (error, abs_tol))
+        if prev_error > error and rel_err <= rel_tol and verbose:
+            print("Converged! Relative decrease %.6f < %.6f" %
+                  (rel_err, rel_tol))
+        if count >= max_iter and verbose:
+            print("Maximum iteration number reached.")
 
     def getFactorErrors(self, fg, result):
         """
@@ -316,6 +359,33 @@ class PseudoLabeler(object):
             error = factor.unwhitenedError(result)
             errors[keytuple] = error
         return errors
+
+    def recomputeNoiseModel(self, errors, kernel, kernel_param, lmd):
+        """
+        Recompute optimal noise models at all factors
+        @param errors: [dict{tuple:array}] Factor unwhitened errors indexed by
+        keys; Error order rpyxyz
+        @param kernel: [int] robust kernel to use in PGO
+        @param kernel_param: [float] robust kernel param (use default if None
+        @param lmd: [float] Regularization coefficient
+        @return noise_models: [dict{tuple:array}] optimal noise model
+        """
+        # TODO(zq): Guard against 0 errors
+        if kernel == Kernel.Gauss:
+            noise_models = \
+                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
+                 for (k, e) in errors.items()}
+        elif kernel == Kernel.MaxMix:
+            # TODO: implement this, use Gaussian reweighting for now
+            noise_models = \
+                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
+                 for (k, e) in errors.items()}
+        else:
+            # TODO(ZQ): Can we generalize to optimization w/ robust kernels?
+            noise_models = \
+                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
+                 for (k, e) in errors.items()}
+        return noise_models
 
     def recomputeDets(self, verbose=False):
         """
@@ -616,9 +686,16 @@ if __name__ == '__main__':
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
 
     pl = PseudoLabeler(args.odom, args.dets)
-    pl.buildGraph(args.prior_noise, args.odom_noise,
-                  args.det_noise, args.kernel, args.kernel_param)
-    pl.solve(args.optim, verbose=args.verbose)
+    if args.joint:
+        pl.solveByIter(
+            args.prior_noise, args.odom_noise, args.det_noise, args.kernel,
+            args.kernel_param, args.optim, lmd=args.lmd, verbose=args.verbose
+        )
+    else:
+        pl.buildGraph(args.prior_noise, args.odom_noise,
+                      args.det_noise, args.kernel, args.kernel_param)
+        pl.solve(args.optim, verbose=args.verbose)
+
     pl.saveData(target_folder, args.img_dim, args.intrinsics, args.verbose)
     pl.error(target_folder, args.gt_obj, verbose=args.verbose)
     if args.plot:
