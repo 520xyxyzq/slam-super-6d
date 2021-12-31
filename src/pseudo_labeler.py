@@ -522,8 +522,7 @@ class PseudoLabeler(object):
         @param out: [string] Target folder to save results
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
-        @param det_std: [array, noiseModel or dict{keys:noiseModel}] Detection
-        noise stds for chi2 test
+        @param det_std: [array, noiseModel] Detection noise stds for chi2 test
         @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
@@ -631,10 +630,12 @@ class PseudoLabeler(object):
             file_interface.save_res_file(out, result)
         return ape_metric.get_all_statistics()
 
-    def plot(self, gt_cam=None):
+    def plot(self, gt_cam=None, save=False, out=None):
         """
         Plot estimation results
         @param gt_cam: [str] (Optional) ground truth camera poses
+        @param save: [bool] Save the figure?
+        @param out: [string] Where to save the figure
         """
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before plotting"
@@ -671,7 +672,11 @@ class PseudoLabeler(object):
 
         axes.view_init(azim=-90, elev=-45)
         axes.legend()
-        plt.show()
+        if save:
+            assert(out is not None), "Error: Figure save path unspecified"
+            plt.savefig(out + self._det_fnames_[0][:-4] + ".png", dpi=200)
+        else:
+            plt.show()
 
     def plot_traj(self, ax, result, linespec="k-", linewidth=2, label="poses"):
         """
@@ -790,5 +795,8 @@ if __name__ == '__main__':
         verbose=args.verbose
     )
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
-    if args.plot:
-        pl.plot(args.gt_cam)
+    # Plot or save the traj and landmarks
+    if args.plot or args.save:
+        pl.plot(args.gt_cam, args.save, target_folder)
+        if args.plot and args.save:
+            print("Info: plot is saved to %s" % target_folder)
