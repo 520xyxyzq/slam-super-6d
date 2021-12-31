@@ -325,7 +325,7 @@ class PseudoLabeler(object):
             if type(det_noise) == dict:
                 regular = lmd * np.sum([
                     np.linalg.norm(n.sigmas())**2 for (k, n) in
-                    det_noise.items() if len(k) == 2 and self.isObjKey(k[1])
+                    det_noise.items() if self.isDetFactor(k)
                 ])
             else:
                 n_edges = sum([len(det) for det in self._dets_])
@@ -387,6 +387,14 @@ class PseudoLabeler(object):
         """
         return gtsam.Symbol(key).chr() == ord('l')
 
+    def isDetFactor(self, keytuple):
+        """
+        Whether a factor is an object pose detection factor from key tuple
+        @param keytuple: [tuple] Tuple with factor keys, e.g.(X(10), L(0))
+        @return isDetFactor: [bool] Is a detection factor?
+        """
+        return len(keytuple) == 2 and self.isObjKey(keytuple[1])
+
     def recomputeNoiseModel(self, errors, kernel, kernel_param, lmd):
         """
         Recompute optimal noise models at all factors
@@ -402,19 +410,19 @@ class PseudoLabeler(object):
         if kernel == Kernel.Gauss:
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
-                 for (k, e) in errors.items()}
+                 for (k, e) in errors.items() if self.isDetFactor(k)}
         elif kernel == Kernel.MaxMix:
             # TODO: implement this, use Gaussian reweighting for now
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
-                 for (k, e) in errors.items()}
+                 for (k, e) in errors.items() if self.isDetFactor(k)}
         else:
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
             print("Warning: No convergence guarantee if reweight w/ kernels")
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
-                 for (k, e) in errors.items()}
+                 for (k, e) in errors.items() if self.isDetFactor(k)}
         return noise_models
 
     def recomputeDets(self, verbose=False):
@@ -440,6 +448,18 @@ class PseudoLabeler(object):
                     continue
                 obj_dets[stamp] = rel_obj_pose
             self._plabels_.append(obj_dets)
+
+    def isOutlier(self, errors, det_noise):
+        """
+        Label outlier object pose detections from factor unwhitened errors
+        @param errors: [dict{tuple:array}] Factor unwhitened errors indexed by
+        keys; Error order rpyxy
+        @param det_noise: [gtsam.noiseModel or dict{tuple:gtsam.noiseModel}]
+        Standard deviation for detection noises
+        @return outliers: [dict{tuple: 0 or 1}] Pose det is an outlier?
+        """
+        # TODO: Use chi-square test for outlier detection
+        pass
 
     def isInImage(self, rel_obj_pose):
         """
