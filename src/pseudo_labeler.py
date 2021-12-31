@@ -14,6 +14,7 @@ import numpy as np
 from evo.core import metrics, sync
 from evo.main_ape import ape as ape_result
 from evo.tools import file_interface
+from scipy.stats.distributions import chi2
 from transforms3d.quaternions import qisunit
 
 # For GTSAM symbols
@@ -449,18 +450,6 @@ class PseudoLabeler(object):
                 obj_dets[stamp] = rel_obj_pose
             self._plabels_.append(obj_dets)
 
-    def isOutlier(self, errors, det_noise):
-        """
-        Label outlier object pose detections from factor unwhitened errors
-        @param errors: [dict{tuple:array}] Factor unwhitened errors indexed by
-        keys; Error order rpyxy
-        @param det_noise: [gtsam.noiseModel or dict{tuple:gtsam.noiseModel}]
-        Standard deviation for detection noises
-        @return outliers: [dict{tuple: 0 or 1}] Pose det is an outlier?
-        """
-        # TODO: Use chi-square test for outlier detection
-        pass
-
     def isInImage(self, rel_obj_pose):
         """
         Check if the object (center) is in the image
@@ -494,12 +483,47 @@ class PseudoLabeler(object):
             data[ii, 1:] = self.gtsamPose32Tum(data_dict[stamp])
         return data
 
-    def saveData(self, out, img_dim, intrinsics, verbose=False):
+    def labelOutliers(self, errors, det_std, chi2_thresh=0.95):
         """
-        Save data to target folder
+        Label outlier object pose detections using Chi2 test
+        @param errors: [dict{tuple:array}] Factor unwhitened errors indexed by
+        keys; Error order rpyxy
+        @param det_std: [array or gtsam.noiseModel] Standard deviation for
+        detection noise
+        @return _outliers_: [list of Nx1 arrays] Outlier stamps for each object
+        """
+        # NOTE: We should not use the det_noise after joint optimization to
+        # label outliers. The outliers are downweighted and thus will pass
+        # the chi2 test.
+        assert(not type(det_std) == dict), \
+            "Error: We should always use a fixed std for chi2 test"
+        det_noise = self.readNoiseModel(det_std) if \
+            type(det_std) in (np.ndarray, list) else det_std
+        sigmas = det_noise.sigmas()
+        chi2inv = chi2.ppf(chi2_thresh, df=len(sigmas))
+        outlier_dict = {k: np.sum(e**2 / sigmas**2) > chi2inv
+                        for (k, e) in errors.items() if self.isDetFactor(k)}
+
+        # Convert the dict{keytuple: 0 or 1} to outlier stamps
+        outliers = [[]] * len(self._dets_)
+        for (k, isout) in outlier_dict.items():
+            if not self.isDetFactor(k) or not isout:
+                continue
+            x_index = gtsam.Symbol(k[0]).index()
+            l_index = gtsam.Symbol(k[1]).index()
+            stamp = self._stamps_[x_index]
+            outliers[l_index].append(stamp)
+        self._outliers_ = outliers
+
+    def saveData(self, out, img_dim, intrinsics, det_std=[0.1],
+                 verbose=False):
+        """
+        Save data (pseudo labels & outlier stamps) to target folder
         @param out: [string] Target folder to save results
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
+        @param det_std: [array, noiseModel or dict{keys:noiseModel}] Detection
+        noise stds for chi2 test
         @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
@@ -519,6 +543,18 @@ class PseudoLabeler(object):
                 out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                 data, fmt=["%.1f"] + ["%.12f"] * 7
             )
+
+        # Use chi2 test to find outliers
+        errors = self.getFactorErrors(self._fg_, self._result_)
+        self.labelOutliers(errors, det_std)
+        # Save outliers to files
+        for o in self._outliers_:
+            np.savetxt(
+                out + out_fname[:-4] + "_obj" + str(ii) + "_outliers" +
+                out_fname[-4:], np.array([o]).T, fmt="%.1f"
+            )
+        if verbose:
+            print("Data saved to %s!" % out)
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
@@ -606,11 +642,13 @@ class PseudoLabeler(object):
         while it != len(self._odom_):
             stamp = self._stamps_[it]
             odom = self._odom_[stamp]
-            for det in self._dets_:
+            for ll, det in enumerate(self._dets_):
                 det_ = det.get(stamp, False)
                 if det_:
                     lm = odom.compose(det_)
-                    fig = gtsam_plot.plot_point3(0, lm.translation(), "g.")
+                    # TODO(zq): make many plots for different objects
+                    color = "y." if stamp in self._outliers_[ll] else "g."
+                    fig = gtsam_plot.plot_point3(0, lm.translation(), color)
             it += 1
 
         axes = fig.gca(projection='3d')
@@ -747,8 +785,10 @@ if __name__ == '__main__':
         pl.buildGraph(args.prior_noise, args.odom_noise,
                       args.det_noise, args.kernel, args.kernel_param)
         pl.solve(args.optim, verbose=args.verbose)
-
-    pl.saveData(target_folder, args.img_dim, args.intrinsics, args.verbose)
+    pl.saveData(
+        target_folder, args.img_dim, args.intrinsics, det_std=args.det_noise,
+        verbose=args.verbose
+    )
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
     if args.plot:
         pl.plot(args.gt_cam)
