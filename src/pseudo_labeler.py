@@ -360,6 +360,22 @@ class PseudoLabeler(object):
             errors[keytuple] = error
         return errors
 
+    def isCamKey(self, key):
+        """
+        Whether a gtsam Key is a camera pose variable
+        @param key: [gtsam.Key] GTSAM variable key
+        @return isX: [bool] Key belongs to a camera pose variable?
+        """
+        return gtsam.Symbol(key).chr() == ord('x')
+
+    def isObjKey(self, key):
+        """
+        Whether a gtsam Key is an object pose variable
+        @param key: [gtsam.Key] GTSAM variable key
+        @return isL: [bool] Key belongs to a object pose variable?
+        """
+        return gtsam.Symbol(key).chr() == ord('l')
+
     def recomputeNoiseModel(self, errors, kernel, kernel_param, lmd):
         """
         Recompute optimal noise models at all factors
