@@ -530,6 +530,7 @@ class PseudoLabeler(object):
             intrinsics[0], intrinsics[1], intrinsics[4], intrinsics[2],
             intrinsics[3]
         )
+        assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
         # Make sure saveData is called after self.solve()
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before saving data"
@@ -624,6 +625,7 @@ class PseudoLabeler(object):
         ape_metric.process_data(data)
         if save:
             assert(out is not None), "Error: APE result save path unspecified"
+            assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
             result = ape_result(
                 ref, est, pose_relation, align_origin=align_origin
             )
@@ -683,6 +685,7 @@ class PseudoLabeler(object):
         axes.legend()
         if save:
             assert(out is not None), "Error: Figure save path unspecified"
+            assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
             plt.savefig(out + self._det_fnames_[0][:-4] + ".png", dpi=200)
         else:
             plt.show()
