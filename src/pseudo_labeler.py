@@ -577,12 +577,12 @@ class PseudoLabeler(object):
             t_error = self.ape(
                 gt_det, out_fname, save=save,
                 pose_relation=metrics.PoseRelation.translation_part,
-                out=out_fname[:-4] + "_t_error.zip"
+                out_name=out_fname[:-4] + "_t_error.zip"
             )
             r_error = self.ape(
                 gt_det, out_fname, save=save,
                 pose_relation=metrics.PoseRelation.rotation_angle_rad,
-                out=out_fname[:-4] + "_r_error.zip"
+                out_name=out_fname[:-4] + "_r_error.zip"
             )
             t_mean, t_median, t_std = \
                 t_error["mean"], t_error["median"], t_error["std"]
@@ -599,7 +599,7 @@ class PseudoLabeler(object):
 
     def ape(self, traj_ref, traj_est, align_origin=False,
             pose_relation=metrics.PoseRelation.translation_part,
-            save=False, out=None):
+            save=False, out_name=None):
         """
         Compute APE btw 2 trajectories or 2 sets of detections
         @param traj_ref: [string] Reference trajectory file (tum format)
@@ -608,7 +608,7 @@ class PseudoLabeler(object):
         @param pose_relation: [string] Metric used to compare poses,
         e.g. "translation part", "rotation angle in radians", etc.
         @param save: [bool] Save the result?
-        @param out: [str] Path to save the result
+        @param out_name: [str] Absolute file name to save the result
         @return ape_stats: [dict] APE stats for the two trajs
         """
         assert(os.path.isfile(traj_ref)), "Error: %s not a file" % (traj_ref)
@@ -624,12 +624,12 @@ class PseudoLabeler(object):
         ape_metric = metrics.APE(pose_relation)
         ape_metric.process_data(data)
         if save:
-            assert(out is not None), "Error: APE result save path unspecified"
-            assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
+            assert(out_name is not None), \
+                "Error: APE result save path unspecified"
             result = ape_result(
                 ref, est, pose_relation, align_origin=align_origin
             )
-            file_interface.save_res_file(out, result)
+            file_interface.save_res_file(out_name, result)
         return ape_metric.get_all_statistics()
 
     def plot(self, gt_cam=None, save=False, out=None):
@@ -665,7 +665,7 @@ class PseudoLabeler(object):
             odom_poses[:, 0], odom_poses[:, 1], odom_poses[:, 2], "g--",
             linewidth=2, label="odom"
         )
-        # Plot ground truth camera poses if any
+        # Plot ground truth camera trajectory if any
         if gt_cam:
             gt_cam_dict = self.readTum(gt_cam)
             # Align origin
@@ -725,7 +725,8 @@ if __name__ == '__main__':
     parser.add_argument(
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
-        default=[root + "/experiments/ycbv/dets/results/0001_ycb_poses.txt"]
+        default=[root + "/experiments/ycbv/dets/results/" +
+                 "004_sugar_box_16k/0001_ycb_poses.txt"]
     )
     parser.add_argument(
         "--prior_noise", "-pn", nargs="+", type=float, default=[0.01],
