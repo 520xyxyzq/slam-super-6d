@@ -653,8 +653,17 @@ class PseudoLabeler(object):
             it += 1
 
         axes = fig.gca(projection='3d')
+        # Plot optimized camera poses
         self.plot_traj(axes, self._result_, "b-", 2, "poses")
-        self.plot_traj(axes, self._init_vals_, "g--", 2, "odom")
+        # Convert odom to np array and plot
+        odom_poses = np.array(
+            [pose.translation() for (stamp, pose) in self._odom_.items()]
+        )
+        axes.plot3D(
+            odom_poses[:, 0], odom_poses[:, 1], odom_poses[:, 2], "g--",
+            linewidth=2, label="odom"
+        )
+        # Plot ground truth camera poses if any
         if gt_cam:
             gt_cam_dict = self.readTum(gt_cam)
             # Align origin
