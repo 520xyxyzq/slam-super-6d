@@ -8,6 +8,9 @@ obj=${1:-004_sugar_box_16k}
 # Where you save the pseudo labels
 out_folder=${2:-~/Desktop/test}
 
+# TODO(ZQ): check whether out_folder is empty before execution
+# TODO(zq): fix path endings i.e. "/"
+
 # Root folder of the package (slam-super-6d)
 root=$(dirname $(dirname $(dirname $(realpath $0))))
 # Python script
@@ -35,6 +38,6 @@ do
     gt_cam=$gt_cam_folder/$seq.txt
     # Optimize!
     python3 $pseudo_labeler --odom $odom --dets $det --out $out_folder \
-    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 2 --optim 1 \
+    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 2 --optim 1 -dn 0.08 \
     --save --verbose
 done
