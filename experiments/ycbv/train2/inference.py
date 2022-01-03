@@ -134,11 +134,18 @@ class DopeNode(object):
                 self.draw_colors[model] = (0,255,0)
             self.dimensions[model] = tuple(config["dimensions"][model])
             self.class_ids[model] = config["class_ids"][model]
+            
+            # New DOPE training script uses a new vertex order, 
+            # "coord" defines the vertex order transformation 
+            class coord():
+                forward = [1, 0, 0]
+                up = [0, 0, 1]
+                right = [0, -1, 0]
 
             self.pnp_solvers[model] = \
                 CuboidPNPSolver(
                     model,
-                    cuboid3d=Cuboid3d(config['dimensions'][model])
+                    cuboid3d=Cuboid3d(config['dimensions'][model], coord_system = coord)
                 )
 
 
@@ -241,7 +248,7 @@ class DopeNode(object):
 
         # save the json files 
         with open(f"{output_folder}/{img_name.replace('png','json')}", 'w') as fp:
-            json.dump(dict_out, fp)
+            json.dump(dict_out, fp, indent=4)
 
             
 
@@ -341,7 +348,7 @@ if __name__ == "__main__":
     # starting the loop here
     i_image = -1 
 
-    while True:
+    while i_image < len(imgs)-1:
         i_image+=1
         
         # Capture frame-by-frame
@@ -356,8 +363,8 @@ if __name__ == "__main__":
 
             img_name = i_image
         else:
-            if i_image >= len(imgs):
-                i_image =0
+            #if i_image >= len(imgs):
+            #    i_image =0
                 
             frame = cv2.imread(imgs[i_image])
             print(f"frame {imgsname[i_image]}")

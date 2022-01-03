@@ -104,9 +104,9 @@ class Cuboid3d():
             ]
         else:
             sx, sy, sz = self.size3d
-            forward = np.array(self.coord_system.forward, dtype=float) * sy * 0.5
+            forward = np.array(self.coord_system.forward, dtype=float) * sx * 0.5
             up = np.array(self.coord_system.up, dtype=float) * sz * 0.5
-            right = np.array(self.coord_system.right, dtype=float) * sx * 0.5
+            right = np.array(self.coord_system.right, dtype=float) * sy * 0.5
             center = np.array(self.center_location, dtype=float)
             self._vertices = [
                 center + forward + up + right,      # Front Top Right
