@@ -46,25 +46,11 @@ class CuboidPNPSolver(object):
 
     def solve_pnp(self, cuboid2d_points, pnp_algorithm = None):
         """
-        Detects the rotation and traslation 
-        of a cuboid object from its vertexes' 
+        Detects the rotation and traslation
+        of a cuboid object from its vertexes'
         2D location in the image
         """
 
-        # Fallback to default PNP algorithm base on OpenCV version
-        if pnp_algorithm is None:
-            if CuboidPNPSolver.cv2majorversion == 2:
-                pnp_algorithm = cv2.CV_ITERATIVE
-            elif CuboidPNPSolver.cv2majorversion == 3:
-                pnp_algorithm = cv2.SOLVEPNP_ITERATIVE
-                # Alternative algorithms:
-                # pnp_algorithm = SOLVE_PNP_P3P  
-                # pnp_algorithm = cv2.SOLVEPNP_EPNP 
-        if pnp_algorithm is None:
-            # pnp_algorithm = 1
-            pnp_algorithm = cv2.SOLVEPNP_EPNP 
-
-        
         location = None
         quaternion = None
         projected_points = cuboid2d_points
@@ -85,27 +71,56 @@ class CuboidPNPSolver(object):
         obj_3d_points = np.array(obj_3d_points, dtype=float)
 
         valid_point_count = len(obj_2d_points)
+        print(valid_point_count, "valid points found" )
 
-        # Can only do PNP if we have more than 3 valid points
-        is_points_valid = valid_point_count >= 4
+        # Set PNP algorithm based on OpenCV version and number of valid points
+        is_points_valid = False
+
+        if pnp_algorithm is None:
+            if CuboidPNPSolver.cv2majorversion == 2:
+                is_points_valid = True
+                pnp_algorithm = cv2.CV_ITERATIVE
+            elif CuboidPNPSolver.cv2majorversion > 2:
+                if valid_point_count >= 6:
+                    is_points_valid = True
+                    pnp_algorithm = cv2.SOLVEPNP_ITERATIVE
+                elif valid_point_count >= 4:
+                    is_points_valid = True
+                    pnp_algorithm = cv2.SOLVEPNP_P3P
+                    # This algorithm requires EXACTLY four points, so we truncate our
+                    # data
+                    obj_3d_points = obj_3d_points[:4]
+                    obj_2d_points = obj_2d_points[:4]
+                    # Alternative algorithms:
+                    # pnp_algorithm = SOLVE_PNP_EPNP
+            else:
+                assert False, "DOPE will not work with versions of OpenCV earlier than 2.0"
 
         if is_points_valid:
-            
-            ret, rvec, tvec = cv2.solvePnP(
-                obj_3d_points,
-                obj_2d_points,
-                self._camera_intrinsic_matrix,
-                self._dist_coeffs,
-                flags=pnp_algorithm
-            )
+            # https://github.com/opencv/opencv/issues/4943#issue-97439430
+            if pnp_algorithm == cv2.SOLVEPNP_P3P:
+                obj_2d_points = obj_2d_points.reshape((-1, 1, 2))            
+            try:
+                ret, rvec, tvec = cv2.solvePnP(
+                    obj_3d_points,
+                    obj_2d_points,
+                    self._camera_intrinsic_matrix,
+                    self._dist_coeffs,
+                    flags=pnp_algorithm
+                )
+            except:
+                # solvePnP will assert if there are insufficient points for the
+                # algorithm
+                print("cv2.solvePnP failed with an error")
+                ret = False
 
             if ret:
                 location = list(x[0] for x in tvec)
                 quaternion = self.convert_rvec_to_quaternion(rvec)
-                
+
                 projected_points, _ = cv2.projectPoints(cuboid3d_points, rvec, tvec, self._camera_intrinsic_matrix, self._dist_coeffs)
                 projected_points = np.squeeze(projected_points)
-                
+
                 # If the location.Z is negative or object is behind the camera then flip both location and rotation
                 x, y, z = location
                 if z < 0:
