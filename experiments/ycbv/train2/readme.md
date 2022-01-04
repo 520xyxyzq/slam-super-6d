@@ -9,12 +9,14 @@ python -m torch.distributed.launch --nproc_per_node=8 train.py --network dope --
 
 There is an accompanying dataset you can also use to train DOPE on the meat can with the shiny top. [link here](https://drive.google.com/file/d/1Q5VLnlt1gu2pKIAcUo9uzSyWw1nGlSF8/view?usp=sharing).
 
+Use dope_env.yaml to create a conda environment for training DOPE.
+
 # Inference
 
 I also made an inference script that runs without any ROS components.
 ```
 python inference.py
-``` 
-Look at the file for more information, similar to the ROS node everything is run through the yaml files in `config_inference`. It is very similar to the original code with some changes. 
+```
+Look at the file for more information, similar to the ROS node everything is run through the yaml files in `config_inference`. It is very similar to the original code with some changes.
 
 Check `models.py` as we are proposing different architectures.

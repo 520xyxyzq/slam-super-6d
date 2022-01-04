@@ -1,0 +1,29 @@
+name: dope
+channels:
+   - conda-forge
+   - pytorch
+dependencies:
+  - python=3.7
+  - gxx_linux-64
+  - pytorch==1.8.0
+  - torchvision==0.9.0
+  - git-lfs
+  - ffmpeg
+  - git
+  - cmake
+  - pip
+  - pip:
+      - matplotlib
+      - simplejson
+      - numpy
+      - opencv_python
+      - photutils
+      - scipy
+      - pyquaternion
+      - tqdm
+      - pyrr
+      - Pillow>=5.2.0
+      - PyYAML
+      - tensorboard
+      - tensorboardX
+      - albumentations
