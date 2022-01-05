@@ -13,7 +13,7 @@ weights: {
     # "soup":"package://dope/weights/soup_60.pth",
     # 'peg_hole': "package://dope/weights/peg_box_40.pth",
     # 'cube_red': "package://dope/weights/red_40.pth",
-    # "sugar":"package://dope/weights/sugar_60.pth"
+    # "sugar":"/home/ziqi/Desktop/sugar_60.pth"
     # "bleach":"package://dope/weights/bleach_28_dr.pth"
     # 'pudding':"weights_dope/pudding.pth"
     # 'pudding':"weights_dope/dope_network/net_epoch_60.pth"
@@ -22,9 +22,11 @@ weights: {
 
 # Type of neural network architecture
 architectures: {
+    'cracker':"dope",
     'meat':"dope",
     'pudding':"dope",
-    'alphabet_soup':'resnet_simple',   
+    'sugar':"dope",
+    'alphabet_soup':'resnet_simple',
 }
 
 
@@ -105,6 +107,6 @@ mesh_scales: {
 
 # Config params for DOPE
 thresh_angle: 0.5
-thresh_map: 0.0001
+thresh_map: 0.007
 sigma: 3
-thresh_points: 0.1
+thresh_points: 0.07
