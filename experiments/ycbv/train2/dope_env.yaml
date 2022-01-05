@@ -5,8 +5,9 @@ channels:
 dependencies:
   - python=3.7
   - gxx_linux-64
-  - pytorch==1.8.0
-  - torchvision==0.9.0
+  - pytorch
+  - torchvision
+  - cudatoolkit
   - git-lfs
   - ffmpeg
   - git
