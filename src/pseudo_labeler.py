@@ -293,7 +293,7 @@ class PseudoLabeler(object):
         self._result_ = optim.optimize()
 
     def solveByIter(self, prior_noise, odom_noise, det_noise, kernel,
-                    kernel_param, optimizer, lmd=1, abs_tol=1e-5,
+                    kernel_param, optimizer, lmd=1, abs_tol=1e-10,
                     rel_tol=1e-2, max_iter=20, verbose=False):
         """
         Jointly optimize SLAM variables and detection noise models by
@@ -329,7 +329,7 @@ class PseudoLabeler(object):
                 assert(hasattr(self, "_outliers_")), \
                     "Error: Outliers not labeled yet!"
                 # Regularization doesn't have outlier terms
-                regular = lmd * np.sum([
+                regular = (1/lmd)**4 * np.sum([
                     np.linalg.norm(n.sigmas())**2 for (k, n) in
                     det_noise_new.items() if self.isDetFactor(k)
                     and self._stamps_[gtsam.Symbol(k[0]).index()] not in
@@ -337,7 +337,8 @@ class PseudoLabeler(object):
                 ])
             else:
                 n_edges = sum([len(det) for det in self._dets_])
-                regular = lmd * n_edges * np.linalg.norm(det_noise_new)**2
+                regular = (1/lmd)**4 * n_edges * \
+                    np.linalg.norm(det_noise_new)**2
             error = self._fg_.error(self._result_) + regular
             rel_err = (prev_error - error) / prev_error
 
@@ -359,7 +360,9 @@ class PseudoLabeler(object):
 
         # Log stopping reason
         if prev_error < error and verbose:
-            print("Warning: Stopping iterations because error increased")
+            print('\033[93m' +
+                  "Warning: Stopping iterations because error increased" +
+                  '\033[0m')
         if error <= abs_tol and verbose:
             print("Converged! Absolute error %.6f < %.6f" % (error, abs_tol))
         if prev_error > error and rel_err <= rel_tol and verbose:
@@ -434,18 +437,20 @@ class PseudoLabeler(object):
                     # Recompute Inlier noise models
                     else:
                         noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
-                            (e**2 / lmd)**(1/4)
+                            lmd * (e**2)**(1/4)
                         )
         elif kernel == Kernel.MaxMix:
             # TODO: implement this, use Gaussian reweighting for now
             print("Warning: reweighting for maxmix not implemented yet!")
             noise_models = \
-                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
+                {k: gtsam.noiseModel.Diagonal.Sigmas(lmd * (e**2)**(1/4))
                  for (k, e) in errors.items() if self.isDetFactor(k)}
         else:
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
-            print("Warning: No convergence guarantee if reweight w/ kernels")
+            print('\033[93m' +
+                  "Warning: No convergence guarantee if reweight w/ kernels" +
+                  '\033[0m')
             noise_models = {}
             for (k, e) in errors.items():
                 if self.isDetFactor(k):
@@ -458,7 +463,7 @@ class PseudoLabeler(object):
                     # Recompute Inlier noise models
                     else:
                         noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
-                            (e**2 / lmd)**(1/4)
+                            lmd * (e**2)**(1/4)
                         )
         return noise_models
 
@@ -586,8 +591,8 @@ class PseudoLabeler(object):
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
 
-            # Save only when #dets > 10% #stamps and #outliers < 40% #dets
-            if len(self._dets_[ii]) > 0.1 * len(self._stamps_) and \
+            # Save only when #dets > 5% #stamps and #outliers < 40% #dets
+            if len(self._dets_[ii]) > 0.05 * len(self._stamps_) and \
                     len(fp) < 0.4 * len(self._dets_[ii]):
                 np.savetxt(
                     out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
@@ -624,6 +629,10 @@ class PseudoLabeler(object):
             out_fname = self._det_fnames_[ii]
             out_fname = out + out_fname[:-4] + \
                 "_obj" + str(ii) + out_fname[-4:]
+            if not os.path.isfile(out_fname):
+                # In case pseudo labels are not saved
+                print("Error analysis not performed since labels not saved.")
+                continue
             t_error = self.ape(
                 gt_det, out_fname, save=save,
                 pose_relation=metrics.PoseRelation.translation_part,
@@ -824,8 +833,9 @@ if __name__ == '__main__':
         help="(Optional) Ground truth obj poses for error analysis"
     )
     parser.add_argument(
-        "--lmd", "-l", type=float, default=1,
-        help="Regularization coefficient for the joint optimization"
+        "--lmd", "-l", type=float, default=100,
+        help="Regularization coefficient for the joint optimization" +
+        "(We in general recommand a large value, e.g. lambda > 100)"
     )
     parser.add_argument(
         "--joint", "-j", action="store_true",
