@@ -312,10 +312,11 @@ class PseudoLabeler(object):
         """
         prev_error, error, rel_err, count = 1e20, 1e19, 1e10, 0
         init_vals = None
+        det_noise_new = det_noise
         while prev_error > error and error > abs_tol and rel_err > rel_tol \
                 and count < max_iter:
             self.buildGraph(
-                prior_noise, odom_noise, det_noise, kernel, kernel_param,
+                prior_noise, odom_noise, det_noise_new, kernel, kernel_param,
                 init_vals
             )
             self.solve(optimizer, verbose)
@@ -323,20 +324,31 @@ class PseudoLabeler(object):
             # Update errors
             prev_error = error
             # NOTE: The joint loss has an extra term (regularization)
-            if type(det_noise) == dict:
+            # TODO: if bootstrap, no self._outlier_ at this step in 1st iter
+            if type(det_noise_new) == dict:
+                assert(hasattr(self, "_outliers_")), \
+                    "Error: Outliers not labeled yet!"
+                # Regularization doesn't have outlier terms
                 regular = lmd * np.sum([
                     np.linalg.norm(n.sigmas())**2 for (k, n) in
-                    det_noise.items() if self.isDetFactor(k)
+                    det_noise_new.items() if self.isDetFactor(k)
+                    and self._stamps_[gtsam.Symbol(k[0]).index()] not in
+                    self._outliers_[gtsam.Symbol(k[1]).index()]
                 ])
             else:
                 n_edges = sum([len(det) for det in self._dets_])
-                regular = lmd * n_edges * np.linalg.norm(det_noise)**2
+                regular = lmd * n_edges * np.linalg.norm(det_noise_new)**2
             error = self._fg_.error(self._result_) + regular
             rel_err = (prev_error - error) / prev_error
 
             # Recompute noise models
             factor_errors = self.getFactorErrors(self._fg_, self._result_)
-            det_noise = self.recomputeNoiseModel(
+            # TODO: Add a warning if det is a dict (for bootstrapping)
+            self.labelOutliers(
+                factor_errors,
+                det_noise if not type(det_noise) == dict else 0.1
+            )
+            det_noise_new = self.recomputeNoiseModel(
                 factor_errors, kernel, kernel_param, lmd
             )
             # Reinitialize using estimates from last iteration
@@ -408,12 +420,25 @@ class PseudoLabeler(object):
         """
         # TODO(zq): Guard against 0 errors
         assert(len(errors) > 0), "Error: Factor errors empty!"
+        assert(hasattr(self, "_outliers_")), "Error: Outliers not labeled!"
         if kernel == Kernel.Gauss:
-            noise_models = \
-                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
-                 for (k, e) in errors.items() if self.isDetFactor(k)}
+            noise_models = {}
+            for (k, e) in errors.items():
+                if self.isDetFactor(k):
+                    stamp = self._stamps_[gtsam.Symbol(k[0]).index()]
+                    obj_id = gtsam.Symbol(k[1]).index()
+                    # Blow up Outliers' noise models to elim their influence
+                    if stamp in self._outliers_[obj_id]:
+                        noise_models[k] = gtsam.noiseModel.Isotropic.Sigma(
+                            6, 1e10)
+                    # Recompute Inlier noise models
+                    else:
+                        noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
+                            (e**2 / lmd)**(1/4)
+                        )
         elif kernel == Kernel.MaxMix:
             # TODO: implement this, use Gaussian reweighting for now
+            print("Warning: reweighting for maxmix not implemented yet!")
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
                  for (k, e) in errors.items() if self.isDetFactor(k)}
@@ -421,9 +446,20 @@ class PseudoLabeler(object):
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
             print("Warning: No convergence guarantee if reweight w/ kernels")
-            noise_models = \
-                {k: gtsam.noiseModel.Diagonal.Sigmas((e**2 / lmd)**(1/4))
-                 for (k, e) in errors.items() if self.isDetFactor(k)}
+            noise_models = {}
+            for (k, e) in errors.items():
+                if self.isDetFactor(k):
+                    stamp = self._stamps_[gtsam.Symbol(k[0]).index()]
+                    obj_id = gtsam.Symbol(k[1]).index()
+                    # Blow up Outliers' noise models to elim their influence
+                    if stamp in self._outliers_[obj_id]:
+                        noise_models[k] = gtsam.noiseModel.Isotropic.Sigma(
+                            6, 1e10)
+                    # Recompute Inlier noise models
+                    else:
+                        noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
+                            (e**2 / lmd)**(1/4)
+                        )
         return noise_models
 
     def recomputeDets(self, verbose=False):
