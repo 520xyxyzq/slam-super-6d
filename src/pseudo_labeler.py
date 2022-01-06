@@ -490,7 +490,7 @@ class PseudoLabeler(object):
         keys; Error order rpyxy
         @param det_std: [array or gtsam.noiseModel] Standard deviation for
         detection noise
-        @return _outliers_: [list of Nx1 arrays] Outlier stamps for each object
+        @return _outliers_: [list of lists] Outlier stamps for each object
         """
         # NOTE: We should not use the det_noise after joint optimization to
         # label outliers. The outliers are downweighted and thus will pass
@@ -543,22 +543,32 @@ class PseudoLabeler(object):
             # Save pseudo labels
             data = self.assembleData(plabel)
             out_fname = self._det_fnames_[ii]
-            np.savetxt(
-                out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
-                data, fmt=["%.1f"] + ["%.12f"] * 7
-            )
             # Save hard examples (false positives and false negatives) to files
             fp = self._outliers_[ii]
             fn = [stamp for stamp in data[:, 0]
                   if stamp not in self._dets_[ii]]
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
-            np.savetxt(
-                out + out_fname[:-4] + "_obj" + str(ii) + "_hard" +
-                out_fname[-4:], hard_egs, fmt="%.1f"
-            )
-        if verbose:
-            print("Data saved to %s!" % out)
+
+            # Save only when #dets > 10% #stamps and #outliers < 40% #dets
+            if len(self._dets_[ii]) > 0.1 * len(self._stamps_) and \
+                    len(fp) < 0.4 * len(self._dets_[ii]):
+                np.savetxt(
+                    out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
+                    data, fmt=["%.1f"] + ["%.12f"] * 7
+                )
+                np.savetxt(
+                    out + out_fname[:-4] + "_obj" + str(ii) + "_hard" +
+                    out_fname[-4:], hard_egs, fmt="%.1f"
+                )
+                if verbose:
+                    print("Data saved to %s!" % out)
+            else:
+                print(
+                    '\033[93m' +
+                    "WARN: Obj %d labels not saved!! #Dets: %d; #Outliers: %d"
+                    % (ii, len(self._dets_[ii]), len(fp)) + '\033[0m'
+                )
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
