@@ -518,7 +518,7 @@ class PseudoLabeler(object):
     def saveData(self, out, img_dim, intrinsics, det_std=[0.1],
                  verbose=False):
         """
-        Save data (pseudo labels & outlier stamps) to target folder
+        Save data (pseudo labels & hard examples' stamps) to target folder
         @param out: [string] Target folder to save results
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
@@ -536,22 +536,26 @@ class PseudoLabeler(object):
             "Error: No PGO results yet, please solve PGO before saving data"
         # Recompute obj pose detections
         self.recomputeDets(verbose)
+        # Use chi2 test to find outliers
+        errors = self.getFactorErrors(self._fg_, self._result_)
+        self.labelOutliers(errors, det_std)
         for ii, plabel in enumerate(self._plabels_):
+            # Save pseudo labels
             data = self.assembleData(plabel)
             out_fname = self._det_fnames_[ii]
             np.savetxt(
                 out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                 data, fmt=["%.1f"] + ["%.12f"] * 7
             )
-
-        # Use chi2 test to find outliers
-        errors = self.getFactorErrors(self._fg_, self._result_)
-        self.labelOutliers(errors, det_std)
-        # Save outliers to files
-        for o in self._outliers_:
+            # Save hard examples (false positives and false negatives) to files
+            fp = self._outliers_[ii]
+            fn = [stamp for stamp in data[:, 0]
+                  if stamp not in self._dets_[ii]]
+            hard_egs = sorted(fp + fn)
+            hard_egs = np.array([hard_egs]).T
             np.savetxt(
-                out + out_fname[:-4] + "_obj" + str(ii) + "_outliers" +
-                out_fname[-4:], np.array([o]).T, fmt="%.1f"
+                out + out_fname[:-4] + "_obj" + str(ii) + "_hard" +
+                out_fname[-4:], hard_egs, fmt="%.1f"
             )
         if verbose:
             print("Data saved to %s!" % out)
