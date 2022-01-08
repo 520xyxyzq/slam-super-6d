@@ -64,8 +64,12 @@ class PseudoLabeler(object):
         self._dets_ = []
         # Save also detection file names for output
         self._det_fnames_ = []
-        for detf in det_files:
+        for ll, detf in enumerate(det_files):
             det = self.readTum(detf)
+            if len(det) == 0:
+                print('\033[93m' + "Warning: no detection for object %d" % ll
+                      + '\033[0m')
+                continue
             self._dets_.append(det)
             det_fname = os.path.basename(detf)
             self._det_fnames_.append(det_fname)
@@ -271,6 +275,8 @@ class PseudoLabeler(object):
         @param poses: [list of gtsam.Pose3] Poses to average
         @return avg_pose: [gtsam.Pose3] Average pose
         """
+        assert(type(poses) is list and len(poses) > 0), \
+            "Error: Pose list is empty"
         t = np.mean(np.array([pose.translation() for pose in poses]), axis=0)
         quats = np.array([pose.rotation().quaternion() for pose in poses])
         # GTSAM -> scipy Rotation quat order wxyz->xyzw
@@ -893,6 +899,7 @@ if __name__ == '__main__':
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
 
     pl = PseudoLabeler(args.odom, args.dets)
+    assert(len(pl._dets_) > 0), "No Object detection in the sequence"
     if args.joint:
         pl.solveByIter(
             args.prior_noise, args.odom_noise, args.det_noise, args.kernel,
