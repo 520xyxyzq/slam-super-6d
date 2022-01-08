@@ -14,6 +14,7 @@ import numpy as np
 from evo.core import metrics, sync
 from evo.main_ape import ape as ape_result
 from evo.tools import file_interface
+from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
 from transforms3d.quaternions import qisunit
 
@@ -139,6 +140,12 @@ class PseudoLabeler(object):
         self._fg_ = gtsam.NonlinearFactorGraph()
         # TODO(ZQ): check init keys match all fg variables
         self._init_vals_ = init if init else gtsam.Values()
+        # Use the avg object pose to initialize object pose variables
+        if not init:
+            for ll, dets in enumerate(self._dets_):
+                poses = [self._odom_[tt] * det for tt, det in dets.items()]
+                avg_pose = self.avgPoses(poses)
+                self._init_vals_.insert(L(ll), avg_pose)
 
         # Read noise models
         prior_noise_model = self.readNoiseModel(prior_noise)
@@ -212,10 +219,6 @@ class PseudoLabeler(object):
             for ll, det in enumerate(self._dets_):
                 detection = det.get(stamp, False)
                 if detection:
-                    # If landmark detected first time, add initial estimate
-                    # TODO(zq): what if 1st pose det is outlier
-                    if not init and not self._init_vals_.exists(L(ll)):
-                        self._init_vals_.insert(L(ll), odom.compose(detection))
                     if isdict:
                         det_nm = det_noise_model[(X(it), L(ll))]
                     else:
@@ -243,6 +246,22 @@ class PseudoLabeler(object):
         else:
             assert(False), "Error: Noise model must have shape 1 or 6"
         return noise_model
+
+    def avgPoses(self, poses):
+        """
+        Average a list of poses
+        @param poses: [list of gtsam.Pose3] Poses to average
+        @return avg_pose: [gtsam.Pose3] Average pose
+        """
+        t = np.mean(np.array([pose.translation() for pose in poses]), axis=0)
+        quats = np.array([pose.rotation().quaternion() for pose in poses])
+        # GTSAM -> scipy Rotation quat order wxyz->xyzw
+        quats = np.hstack((quats[:, 1:], quats[:, :1]))
+        # Rotation Averaging
+        quat = R.from_quat(quats).mean().as_quat()
+        # scipy -> GTSAM Rotation quat order xyzw->wxyz
+        quat = np.hstack((quat[-1], quat[:3]))
+        return gtsam.Pose3(gtsam.Rot3.Quaternion(*quat), gtsam.Point3(t))
 
     def solve(self, optimizer, verbose=False):
         """
