@@ -686,7 +686,9 @@ class PseudoLabeler(object):
             assert(out_name is not None), \
                 "Error: APE result save path unspecified"
             result = ape_result(
-                ref, est, pose_relation, align_origin=align_origin
+                ref, est, pose_relation, align_origin=align_origin,
+                ref_name=os.path.basename(traj_ref),
+                est_name=os.path.basename(traj_est)
             )
             file_interface.save_res_file(out_name, result)
         return ape_metric.get_all_statistics()
