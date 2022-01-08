@@ -129,7 +129,7 @@ class PseudoLabeler(object):
     def buildGraph(self, prior_noise, odom_noise, det_noise, kernel,
                    kernel_param=None, init=None):
         """
-        Return odom and dets at next time step
+        Build pose graph from odom and object pose measurements
         @param prior_noise: [1 or 6-array] Prior noise model
         @param odom_noise: [1 or 6-array] Camera odom noise model
         @param det_noise: [1 or 6-array or dict] Detection noise model
@@ -150,11 +150,77 @@ class PseudoLabeler(object):
         # Read noise models
         prior_noise_model = self.readNoiseModel(prior_noise)
         odom_noise_model = self.readNoiseModel(odom_noise)
-        # Allow for different noise models for det factors, i.e. use dict
-        # The flag isdict indicates whether noise model is factor dependent
-        isdict = type(det_noise) is dict
-        det_noise_model = \
-            det_noise if isdict else self.readNoiseModel(det_noise)
+        det_noise_model = self.readRobustNoiseModel(
+            det_noise, kernel, kernel_param
+        )
+
+        # Build graph
+        it = 0
+        while it != len(self._odom_):
+            stamp = self._stamps_[it]
+            odom = self._odom_[stamp]
+            # Add (prior or) odom factor btw cam poses
+            if it == 0:
+                self._fg_.add(
+                    gtsam.PriorFactorPose3(X(it), odom, prior_noise_model)
+                )
+            else:
+                rel_pose = self.prev_odom.inverse().compose(odom)
+                self._fg_.add(
+                    gtsam.BetweenFactorPose3(X(it - 1), X(it), rel_pose,
+                                             odom_noise_model)
+                )
+            # Add cam pose initial estimate
+            if not init:
+                self._init_vals_.insert(X(it), odom)
+            # Remember previous odom pose to cpmpute relative cam poses
+            self.prev_odom = odom
+
+            # Add detection factor
+            for ll, det in enumerate(self._dets_):
+                detection = det.get(stamp, False)
+                if detection:
+                    if type(det_noise_model) is dict:
+                        det_nm = det_noise_model[(X(it), L(ll))]
+                    else:
+                        det_nm = det_noise_model
+                    self._fg_.add(
+                        gtsam.BetweenFactorPose3(X(it), L(ll), detection,
+                                                 det_nm)
+                    )
+            it += 1
+
+    def readNoiseModel(self, noise):
+        """
+        Read noise as GTSAM noise model
+        @param noise: [1 or 6 array] Noise model
+        @return noise_model: [gtsam.noiseModel] GTSAM noise model
+        """
+        # Read prior noise model
+        # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
+        if len(noise) == 1:
+            noise_model = \
+                gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
+        elif len(noise) == 6:
+            noise_model = \
+                gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
+        else:
+            assert(False), "Error: Noise model must have shape 1 or 6"
+        return noise_model
+
+    def readRobustNoiseModel(self, noise, kernel, kernel_param):
+        """
+        Read noise model and set robust kernel
+        @param noise: [1 or 6-list or gtsam.noiseModel or dict] noise
+        @param kernel: [int] robust kernel to use in PGO
+        @param kernel_param: [float] robust kernel param (use default if None)
+        @return robust_noise_model: [gtsam.noiseModel or dict] Robust noise
+        model (dict in --> dict out; other in --> gtsam.noiseModel out)
+        """
+        # noise as dict: noise model is factor dependent
+        # else: noise model is constant
+        robust_noise_model = \
+            noise if type(noise) is dict else self.readNoiseModel(noise)
 
         # Set robust kernel
         if kernel == Kernel.Gauss:
@@ -184,68 +250,17 @@ class PseudoLabeler(object):
                 robust = gtsam.noiseModel.mEstimator.Welsch(
                     kernel_param if kernel_param else 2.9846
                 )
-            if isdict:
-                det_noise_model = {k: gtsam.noiseModel.Robust(robust, n)
-                                   for (k, n) in det_noise.items()}
+            # dict in --> dict out; other in --> gtsam.noiseModel out
+            if type(noise) is dict:
+                robust_noise_model = {k: gtsam.noiseModel.Robust(robust, n)
+                                      for (k, n) in noise.items()}
             else:
-                det_noise_model = \
-                    gtsam.noiseModel.Robust(robust, det_noise_model)
+                robust_noise_model = \
+                    gtsam.noiseModel.Robust(robust, robust_noise_model)
         else:
             assert(False), "Error: Unknown robust kernel type"
 
-        # Build graph
-        it = 0
-        while it != len(self._odom_):
-            stamp = self._stamps_[it]
-            odom = self._odom_[stamp]
-            # Add (prior or) odom factor btw cam poses
-            if it == 0:
-                self._fg_.add(
-                    gtsam.PriorFactorPose3(X(it), odom, prior_noise_model)
-                )
-            else:
-                rel_pose = self.prev_odom.inverse().compose(odom)
-                self._fg_.add(
-                    gtsam.BetweenFactorPose3(X(it - 1), X(it), rel_pose,
-                                             odom_noise_model)
-                )
-            # Add cam pose initial estimate
-            if not init:
-                self._init_vals_.insert(X(it), odom)
-            # Remember previous odom pose to cpmpute relative cam poses
-            self.prev_odom = odom
-
-            # Add detection factor
-            for ll, det in enumerate(self._dets_):
-                detection = det.get(stamp, False)
-                if detection:
-                    if isdict:
-                        det_nm = det_noise_model[(X(it), L(ll))]
-                    else:
-                        det_nm = det_noise_model
-                    self._fg_.add(
-                        gtsam.BetweenFactorPose3(X(it), L(ll), detection,
-                                                 det_nm)
-                    )
-            it += 1
-
-    def readNoiseModel(self, noise):
-        """
-        Read noise as GTSAM noise model
-        @param noise: [1 or 6 array] Noise model
-        @return noise_model: [gtsam.noiseModel] GTSAM noise model
-        """
-        # Read prior noise model
-        # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
-        if len(noise) == 1:
-            noise_model = \
-                gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
-        elif len(noise) == 6:
-            noise_model = \
-                gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
-        else:
-            assert(False), "Error: Noise model must have shape 1 or 6"
-        return noise_model
+        return robust_noise_model
 
     def avgPoses(self, poses):
         """
