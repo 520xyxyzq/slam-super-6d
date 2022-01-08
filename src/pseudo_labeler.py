@@ -193,11 +193,14 @@ class PseudoLabeler(object):
     def readNoiseModel(self, noise):
         """
         Read noise as GTSAM noise model
-        @param noise: [1 or 6 array] Noise model
+        @param noise: [1 or 6 array/list or gtsam.noiseModel] Noise model
         @return noise_model: [gtsam.noiseModel] GTSAM noise model
         """
         # Read prior noise model
         # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
+        if type(noise) in [gtsam.noiseModel.Isotropic,
+                           gtsam.noiseModel.Diagonal]:
+            return noise
         if len(noise) == 1:
             noise_model = \
                 gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
@@ -205,13 +208,13 @@ class PseudoLabeler(object):
             noise_model = \
                 gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
         else:
-            assert(False), "Error: Noise model must have shape 1 or 6"
+            assert(False), "Error: Unexpected noise model type!"
         return noise_model
 
     def readRobustNoiseModel(self, noise, kernel, kernel_param):
         """
         Read noise model and set robust kernel
-        @param noise: [1 or 6-list or gtsam.noiseModel or dict] noise
+        @param noise: [1 or 6-array/list or gtsam.noiseModel or dict] noise
         @param kernel: [int] robust kernel to use in PGO
         @param kernel_param: [float] robust kernel param (use default if None)
         @return robust_noise_model: [gtsam.noiseModel or dict] Robust noise
