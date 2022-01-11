@@ -87,6 +87,7 @@ class DopeNode(object):
     """ROS node that listens to image topic, runs DOPE, and publishes DOPE results"""
     def __init__(self,
             config, # config yaml loaded eg dict
+            new=True
         ):
         self.pubs = {}
         self.models = {}
@@ -143,7 +144,8 @@ class DopeNode(object):
             self.pnp_solvers[model] = \
                 CuboidPNPSolver(
                     model,
-                    cuboid3d=Cuboid3d(config['dimensions'][model], coord_system = coord)
+                    cuboid3d=Cuboid3d(config['dimensions'][model],
+                    coord_system = coord if new else None)
                 )
 
 
@@ -153,10 +155,10 @@ class DopeNode(object):
     def image_callback(self, 
         img, 
         camera_info, 
-        img_name = "00000.png", # this is the name of the img file to save, it needs the .png at the end
+        stamp = 0.0,
         output_folder = 'out_inference', # folder where to put the output
         ):
-        img_name = str(img_name).zfill(5)
+        #img_name = str(img_name).zfill(5)
         """Image callback"""
 
         # img = self.cv_bridge.imgmsg_to_cv2(image_msg, "rgb8")
@@ -195,6 +197,9 @@ class DopeNode(object):
 
         # dictionary for the final output
         dict_out = {"camera_data":{},"objects":[]}
+        # np array for saving as tum file
+        array = [stamp] + [0.0] * 7
+        num_pts = 0
 
         for m in self.models:
             # Detect object
@@ -241,12 +246,21 @@ class DopeNode(object):
                     for pair in result['projected_points']:
                         points2d.append(tuple(pair))
                     draw.draw_cube(points2d, self.draw_colors[m])
+                
+                # TODO: find a better criterion for the correct pose
+                # If multiple objects detected, use the one with more vertex points
+                if len(result["raw_points"]) > num_pts:
+                    array[1:4] = (np.array(loc) / 100).tolist()
+                    array[4:] = np.array(ori).tolist()
+                num_pts = len(result["raw_points"])
+        # TODO: add the following back for debugging
         # save the output of the image. 
-        im.save(f"{output_folder}/{img_name}.png")
+        # im.save(f"{output_folder}/{img_name}.png")
 
         # save the json files 
-        with open(f"{output_folder}/{img_name.replace('png','json')}", 'w') as fp:
-            json.dump(dict_out, fp, indent=4)
+        # with open(f"{output_folder}/{img_name.replace('png','json')}", 'w') as fp:
+        #     json.dump(dict_out, fp, indent=4)
+        return array
 
             
 
@@ -294,9 +308,15 @@ if __name__ == "__main__":
     parser.add_argument('--realsense',
         action='store_true',
         help='use the realsense camera')
-
+    parser.add_argument(
+        "--seq", "-s", default=0, help="YCB sequence id (for save)"
+    )
+    parser.add_argument(
+        "--old", "-o", action="store_false", help="Old vertex order?"
+    )
 
     opt = parser.parse_args()
+    seq = str(opt.seq).rjust(4, "0")
 
     # load the configs
     with open(opt.config) as f:
@@ -344,9 +364,10 @@ if __name__ == "__main__":
             cap = cv2.VideoCapture(0)
 
     # An object to run dope node
-    dope_node = DopeNode(config)
+    dope_node = DopeNode(config, new=opt.old)
 
-
+    # Save to tum file
+    tum = []
     # starting the loop here
     i_image = -1 
 
@@ -363,20 +384,27 @@ if __name__ == "__main__":
             else:
                 ret, frame = cap.read()
 
-            img_name = i_image
+            #img_name = i_image
+            stamp = i_image / 10
         else:
             #if i_image >= len(imgs):
             #    i_image =0
                 
             frame = cv2.imread(imgs[i_image])
             print(f"frame {imgsname[i_image]}")
-            img_name = imgsname[i_image]
+            #img_name = imgsname[i_image]
+            stamp = i_image / 10
 
         frame = frame[...,::-1].copy()
         
         # call the inference node
-        dope_node.image_callback(
+        line = dope_node.image_callback(
             frame, 
             camera_info,
-            img_name = img_name,
+            stamp = stamp,
             output_folder = opt.outf)
+        tum.append(line)
+    
+    # Save as tum format
+    tum = np.array(tum)
+    np.savetxt(opt.outf + seq + ".txt", tum, fmt=["%.1f"] + ["%.12f"] * 7)
