@@ -47,6 +47,12 @@ class Optimizer(IntEnum):
     GncLMGM = 5
 
 
+class LabelingMode(IntEnum):
+    SLAM = 0
+    Inlier = 1
+    Hybrid = 2
+
+
 class PseudoLabeler(object):
 
     def __init__(self, odom_file, det_files):
@@ -510,10 +516,11 @@ class PseudoLabeler(object):
                         )
         return noise_models
 
-    def recomputeDets(self, verbose=False):
+    def recomputeDets(self, mode=0, verbose=False):
         """
         Recompute object pose detections (i.e. Pseudo labels) from PGO results
         @param verbose: [bool] Print object out of image message?
+        @param mode: [int] Pseudo labeling mode: SLAM (0) Inlier(1) Hybrid (2)
         @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
         """
         self._plabels_ = []
@@ -531,7 +538,18 @@ class PseudoLabeler(object):
                         print("Obj %d not in image at stamp %.1f" %
                               (ii, stamp))
                     continue
-                obj_dets[stamp] = rel_obj_pose
+                if mode == LabelingMode.SLAM:
+                    obj_dets[stamp] = rel_obj_pose
+                elif mode == LabelingMode.Inlier:
+                    if stamp not in self._dets_[ii]:
+                        continue
+                    if stamp not in self._outliers_[ii]:
+                        obj_dets[stamp] = self._dets_[ii][stamp]
+                elif mode == LabelingMode.Hybrid:
+                    # TODO(ZQ): implement this
+                    pass
+                else:
+                    assert(False), "Error: Unknown pseudo labeling mode!"
             self._plabels_.append(obj_dets)
 
     def isInImage(self, rel_obj_pose):
@@ -599,7 +617,7 @@ class PseudoLabeler(object):
             outliers[l_index].append(stamp)
         self._outliers_ = outliers
 
-    def saveData(self, out, img_dim, intrinsics, det_std=[0.1],
+    def saveData(self, out, img_dim, intrinsics, det_std=[0.1], mode=0,
                  verbose=False):
         """
         Save data (pseudo labels & hard examples' stamps) to target folder
@@ -607,6 +625,7 @@ class PseudoLabeler(object):
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
         @param det_std: [array, noiseModel] Detection noise stds for chi2 test
+        @param mode: [int] Pseudo labeling mode: SLAM v.s. Inlier v.s. Hybrid
         @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
@@ -618,11 +637,11 @@ class PseudoLabeler(object):
         # Make sure saveData is called after self.solve()
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before saving data"
-        # Recompute obj pose detections
-        self.recomputeDets(verbose)
         # Use chi2 test to find outliers
         errors = self.getFactorErrors(self._fg_, self._result_)
         self.labelOutliers(errors, det_std)
+        # Recompute obj pose detections
+        self.recomputeDets(mode, verbose)
         for ii, plabel in enumerate(self._plabels_):
             # Save pseudo labels
             data = self.assembleData(plabel)
@@ -634,9 +653,9 @@ class PseudoLabeler(object):
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
 
-            # Save only when #dets > 5% #stamps and #outliers < 40% #dets
+            # Save only when #dets > 5% #stamps and #outliers < 20% #dets
             if len(self._dets_[ii]) > 0.05 * len(self._stamps_) and \
-                    len(fp) < 0.4 * len(self._dets_[ii]):
+                    len(fp) < 0.2 * len(self._dets_[ii]):
                 np.savetxt(
                     out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                     data, fmt=["%.1f"] + ["%.12f"] * 7
@@ -887,6 +906,10 @@ if __name__ == '__main__':
         help="Auto-tune detection noise model?"
     )
     parser.add_argument(
+        "--mode", "-m", type=int, default=0,
+        help="Pseudo labeling mode: SLAM (0), Inlier (1), Hybrid (2)."
+    )
+    parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
     )
     parser.add_argument(
@@ -911,7 +934,7 @@ if __name__ == '__main__':
         pl.solve(args.optim, verbose=args.verbose)
     pl.saveData(
         target_folder, args.img_dim, args.intrinsics, det_std=args.det_noise,
-        verbose=args.verbose
+        mode=args.mode, verbose=args.verbose
     )
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
     # Plot or save the traj and landmarks
