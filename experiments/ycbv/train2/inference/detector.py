@@ -52,14 +52,14 @@ transform = transforms.Compose([
 #================================ Models ================================
 
 
-class DopeNetwork(nn.Module):
+class DopeNet(nn.Module):
     def __init__(
             self,
             numBeliefMap=9,
             numAffinity=16,
             stop_at_stage=6  # number of stages to process (if less than total number of stages)
         ):
-        super(DopeNetwork, self).__init__()
+        super(DopeNet, self).__init__()
 
         self.stop_at_stage = stop_at_stage
 
@@ -242,7 +242,7 @@ class ModelData(object):
         model_loading_start_time = time.time()
         print("Loading DOPE model '{}'...".format(path))
         if self.architecture == 'dope':
-            net = DopeNetwork()
+            net = DopeNet()
         else:
             net = ResnetSimple()
         net = torch.nn.DataParallel(net, [0]).cuda()
