@@ -1,26 +1,32 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2018 NVIDIA Corporation. All rights reserved.
-# This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+# This work is licensed under a Creative Commons
+# Attribution-NonCommercial-ShareAlike 4.0 International License.
 # https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 
 """
-This file starts a ROS node to run DOPE, 
+This file starts a ROS node to run DOPE,
 listening to an image topic and publishing poses.
 """
 
 from __future__ import print_function
 
+import argparse
+import glob
+import os
+
 import cv2
 import numpy as np
-from PIL import Image
-from PIL import ImageDraw
-
+import yaml
 from inference.cuboid import Cuboid3d
 from inference.cuboid_pnp_solver import CuboidPNPSolver
 from inference.detector import ModelData, ObjectDetector
+from PIL import Image, ImageDraw
 
-import simplejson as json
+# import simplejson as json
+# import shutil
+
 
 class Draw(object):
     """Drawing helper class to visualize the neural network output"""
@@ -84,11 +90,14 @@ class Draw(object):
 
 
 class DopeNode(object):
-    """ROS node that listens to image topic, runs DOPE, and publishes DOPE results"""
-    def __init__(self,
-            config, # config yaml loaded eg dict
-            new=True
-        ):
+    """
+    Read images from file, runs DOPE, and compute object poses
+    """
+
+    def __init__(self, config, new=True):
+        """
+        @param config: [string] config_pose.yaml file
+        """
         self.pubs = {}
         self.models = {}
         self.pnp_solvers = {}
@@ -114,7 +123,7 @@ class DopeNode(object):
         self.config_detect.sigma = config['sigma']
         self.config_detect.thresh_points = config["thresh_points"]
 
-        # For each object to detect, load network model, create PNP solver, and start ROS publishers
+        # For each object to detect, load network model, create PNP solver
         print(config['weights'])
         for model in config['weights']:
             print(model)
@@ -122,52 +131,52 @@ class DopeNode(object):
                 ModelData(
                     model,
                     config['weights'][model],
-                    architecture = config['architectures'][model]
-                )
+                    architecture=config['architectures'][model]
+            )
             self.models[model].load_net_model()
             print('loaded')
 
             try:
                 self.draw_colors[model] = tuple(config["draw_colors"][model])
-            except:
-                self.draw_colors[model] = (0,255,0)
+            except Exception:
+                self.draw_colors[model] = (0, 255, 0)
             self.dimensions[model] = tuple(config["dimensions"][model])
             self.class_ids[model] = config["class_ids"][model]
-            
-            # New DOPE training script uses a new vertex order, 
-            # "coord" defines the vertex order transformation 
+
+            # New DOPE training script uses a new vertex order,
+            # "coord" defines the vertex order transformation
             class coord():
                 forward = [1, 0, 0]
                 up = [0, 0, 1]
                 right = [0, -1, 0]
 
-            self.pnp_solvers[model] = \
-                CuboidPNPSolver(
-                    model,
-                    cuboid3d=Cuboid3d(config['dimensions'][model],
-                    coord_system = coord if new else None)
-                )
+            self.pnp_solvers[model] = CuboidPNPSolver(
+                model, cuboid3d=Cuboid3d(config['dimensions'][model],
+                                         coord_system=coord if new else None)
+            )
 
-
-        # print("Running DOPE...  (Listening to camera topic: '{}')".format(config['~topic_camera')))
         print("Ctrl-C to stop")
 
-    def image_callback(self, 
-        img, 
-        camera_info, 
-        stamp = 0.0,
-        output_folder = 'out_inference', # folder where to put the output
-        ):
-        #img_name = str(img_name).zfill(5)
+    def image_callback(self, img, camera_info, stamp=0.0,
+                       output_folder='out_inference'):
+        """
+        Compute and save object poses
+        @param img: [np.ndarray] Image
+        @param camera_info: [string] Camera info yaml file
+        @stamp stamp: [float] Time stamp for the current image
+        @param output_folder: [string] folder to save images and result yamls
+        """
+        # img_name = str(img_name).zfill(5)
         """Image callback"""
 
         # img = self.cv_bridge.imgmsg_to_cv2(image_msg, "rgb8")
-
-        # cv2.imwrite('img.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))  # for debugging
+        # for debugging
+        # cv2.imwrite('img.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         # Update camera matrix and distortion coefficients
         if self.input_is_rectified:
-            P = np.matrix(camera_info['projection_matrix']['data'], dtype='float64').copy()
+            P = np.matrix(camera_info['projection_matrix']['data'],
+                          dtype='float64').copy()
             P.resize((3, 4))
             camera_matrix = P[:, :3]
             dist_coeffs = np.zeros((4, 1))
@@ -183,7 +192,10 @@ class DopeNode(object):
         scaling_factor = float(self.downscale_height) / height
         if scaling_factor < 1.0:
             camera_matrix[:2] *= scaling_factor
-            img = cv2.resize(img, (int(scaling_factor * width), int(scaling_factor * height)))
+            img = cv2.resize(
+                img,
+                (int(scaling_factor * width), int(scaling_factor * height))
+            )
 
         for m in self.models:
             self.pnp_solvers[m].set_camera_intrinsic_matrix(camera_matrix)
@@ -194,9 +206,8 @@ class DopeNode(object):
         im = Image.fromarray(img_copy)
         draw = Draw(im)
 
-
         # dictionary for the final output
-        dict_out = {"camera_data":{},"objects":[]}
+        dict_out = {"camera_data": {}, "objects": []}
         # np array for saving as tum file
         array = [stamp] + [0.0] * 7
         num_pts = 0
@@ -219,24 +230,30 @@ class DopeNode(object):
                 # print(result)
                 loc = result["location"]
                 ori = result["quaternion"]
-                
+
                 print(loc)
 
                 dict_out['objects'].append({
-                    'class':m,
-                    'location':np.array(loc).tolist(),
-                    'quaternion_xyzw':np.array(ori).tolist(),
-                    'projected_cuboid':np.array(result['projected_points']).tolist(),
+                    'class': m,
+                    'location': np.array(loc).tolist(),
+                    'quaternion_xyzw': np.array(ori).tolist(),
+                    'projected_cuboid':
+                    np.array(result['projected_points']).tolist(),
                 })
                 # print( dict_out )
 
                 # transform orientation
-                # TODO 
-                # transformed_ori = tf.transformations.quaternion_multiply(ori, self.model_transforms[m])
+                # TODO
+                # transformed_ori = tf.transformations.quaternion_multiply(
+                #   ori, self.model_transforms[m]
+                # )
 
                 # rotate bbox dimensions if necessary
-                # (this only works properly if model_transform is in 90 degree angles)
-                # dims = rotate_vector(vector=self.dimensions[m], quaternion=self.model_transforms[m])
+                # (only works properly if model_transform is in 90 deg angles)
+                # dims = rotate_vector(
+                #   vector=self.dimensions[m],
+                #   quaternion=self.model_transforms[m]
+                # )
                 # dims = np.absolute(dims)
                 # dims = tuple(dims)
 
@@ -246,68 +263,65 @@ class DopeNode(object):
                     for pair in result['projected_points']:
                         points2d.append(tuple(pair))
                     draw.draw_cube(points2d, self.draw_colors[m])
-                
+
                 # TODO: find a better criterion for the correct pose
-                # If multiple objects detected, use the one with more vertex points
+                # If multi obj detected, use the one with more vertex points
                 if len(result["raw_points"]) > num_pts:
                     array[1:4] = (np.array(loc) / 100).tolist()
                     array[4:] = np.array(ori).tolist()
                 num_pts = len(result["raw_points"])
         # TODO: add the following back for debugging
-        # save the output of the image. 
+        # save the output of the image.
         # im.save(f"{output_folder}/{img_name}.png")
 
-        # save the json files 
-        # with open(f"{output_folder}/{img_name.replace('png','json')}", 'w') as fp:
+        # save the json files
+        # with open(f"{output_folder}/{img_name.replace('png','json')}", 'w') \
+        #   as fp:
         #     json.dump(dict_out, fp, indent=4)
         return array
 
-            
 
-def rotate_vector(vector, quaternion):
-    q_conj = tf.transformations.quaternion_conjugate(quaternion)
-    vector = np.array(vector, dtype='float64')
-    vector = np.append(vector, [0.0])
-    vector = tf.transformations.quaternion_multiply(q_conj, vector)
-    vector = tf.transformations.quaternion_multiply(vector, quaternion)
-    return vector[:3]
+# def rotate_vector(vector, quaternion):
+#     q_conj = tf.transformations.quaternion_conjugate(quaternion)
+#     vector = np.array(vector, dtype='float64')
+#     vector = np.append(vector, [0.0])
+#     vector = tf.transformations.quaternion_multiply(q_conj, vector)
+#     vector = tf.transformations.quaternion_multiply(vector, quaternion)
+#     return vector[:3]
+
 
 if __name__ == "__main__":
 
-    import argparse
-    import yaml 
-    import glob 
-    import os 
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pause",
-        default=0,
-        help='pause between images')
-    parser.add_argument("--showbelief",
-        action="store_true",
-        help='show the belief maps')
-    parser.add_argument("--dontshow",
-        action="store_true",
-        help='headless mode')
-    parser.add_argument("--outf",
-        default="out_experiment",
-        help='where to store the output')
-    parser.add_argument("--data",
-        default=None,
-        help='folder for data images to load, *.png, *.jpeg, *jpg')
+    parser.add_argument(
+        "--pause", default=0, help='pause between images'
+    )
+    parser.add_argument(
+        "--showbelief", action="store_true", help='show the belief maps'
+    )
+    parser.add_argument(
+        "--dontshow", action="store_true", help='headless mode'
+    )
+    parser.add_argument(
+        "--outf", default="out_experiment", help='where to store the output'
+    )
+    parser.add_argument(
+        "--data", default=None,
+        help='folder for data images to load, *.png, *.jpeg, *jpg'
+    )
     parser.add_argument(
         "--config", "-cfg", type=str, help='folder for the inference configs',
-        default=os.path.dirname(os.path.realpath(__file__)) + 
+        default=os.path.dirname(os.path.realpath(__file__)) +
         "/config_inference/config_pose.yaml"
     )
     parser.add_argument(
         "--camera", "-c", type=str, help='camera info file',
-        default=os.path.dirname(os.path.realpath(__file__)) + 
+        default=os.path.dirname(os.path.realpath(__file__)) +
         "/config_inference/camera_info.yaml",
     )
-    parser.add_argument('--realsense',
-        action='store_true',
-        help='use the realsense camera')
+    parser.add_argument(
+        '--realsense', action='store_true', help='use the realsense camera'
+    )
     parser.add_argument(
         "--seq", "-s", default=0, help="YCB sequence id (for save)"
     )
@@ -323,10 +337,11 @@ if __name__ == "__main__":
         config = yaml.load(f, Loader=yaml.FullLoader)
     with open(opt.camera) as f:
         camera_info = yaml.load(f, Loader=yaml.FullLoader)
-    
+
     # setup the realsense
     if opt.realsense:
         import pyrealsense2 as rs
+
         # Configure depth and color streams
         pipeline = rs.pipeline()
         config = rs.config()
@@ -336,29 +351,27 @@ if __name__ == "__main__":
         # Start streaming
         pipeline.start(config)
 
-
     # create the output folder
-    print (f"output is located in {opt.outf}")
-    try:
-        shutil.rmtree(f"{opt.outf}")
-    except:
-        pass
+    print(f"output is located in {opt.outf}")
+    # try:
+    #     shutil.rmtree(f"{opt.outf}")
+    # except Exception:
+    #     pass
 
-    try:
-        os.makedirs(f"{opt.outf}")
-    except OSError:
-        pass
-
+    # try:
+    #     os.makedirs(f"{opt.outf}")
+    # except OSError:
+    #     pass
 
     # load the images if there are some
     imgs = []
     imgsname = []
 
-    if not opt.data is None:
+    if opt.data is not None:
         videopath = opt.data
         for j in sorted(glob.glob(videopath+"/*.png")):
             imgs.append(j)
-            imgsname.append(j.replace(videopath,"").replace("/",""))
+            imgsname.append(j.replace(videopath, "").replace("/", ""))
     else:
         if not opt.realsense:
             cap = cv2.VideoCapture(0)
@@ -369,11 +382,11 @@ if __name__ == "__main__":
     # Save to tum file
     tum = []
     # starting the loop here
-    i_image = -1 
+    i_image = -1
 
     while i_image < len(imgs)-1:
-        i_image+=1
-        
+        i_image += 1
+
         # Capture frame-by-frame
 
         if not opt.data:
@@ -384,27 +397,25 @@ if __name__ == "__main__":
             else:
                 ret, frame = cap.read()
 
-            #img_name = i_image
+            # img_name = i_image
             stamp = i_image / 10
         else:
-            #if i_image >= len(imgs):
+            # if i_image >= len(imgs):
             #    i_image =0
-                
+
             frame = cv2.imread(imgs[i_image])
             print(f"frame {imgsname[i_image]}")
-            #img_name = imgsname[i_image]
+            # img_name = imgsname[i_image]
             stamp = i_image / 10
 
-        frame = frame[...,::-1].copy()
-        
+        frame = frame[..., ::-1].copy()
+
         # call the inference node
         line = dope_node.image_callback(
-            frame, 
-            camera_info,
-            stamp = stamp,
-            output_folder = opt.outf)
+            frame, camera_info, stamp=stamp, output_folder=opt.outf
+        )
         tum.append(line)
-    
+
     # Save as tum format
     tum = np.array(tum)
     np.savetxt(opt.outf + seq + ".txt", tum, fmt=["%.1f"] + ["%.12f"] * 7)
