@@ -38,7 +38,7 @@ sys.path.append("../")
 from models import * 
 
 # Import the definition of the neural network model and cuboids
-from cuboid_pnp_solver import *
+from inference.cuboid_pnp_solver import *
 
 #global transform for image input
 transform = transforms.Compose([

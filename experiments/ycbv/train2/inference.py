@@ -16,11 +16,9 @@ import numpy as np
 from PIL import Image
 from PIL import ImageDraw
 
-import sys 
-sys.path.append("inference")
-from cuboid import Cuboid3d
-from cuboid_pnp_solver import CuboidPNPSolver
-from detector import ModelData, ObjectDetector
+from inference.cuboid import Cuboid3d
+from inference.cuboid_pnp_solver import CuboidPNPSolver
+from inference.detector import ModelData, ObjectDetector
 
 import simplejson as json
 
@@ -283,12 +281,16 @@ if __name__ == "__main__":
     parser.add_argument("--data",
         default=None,
         help='folder for data images to load, *.png, *.jpeg, *jpg')
-    parser.add_argument("--config",
-        default="config_inference/config_pose.yaml",
-        help='folder for the inference configs')
-    parser.add_argument("--camera",
-        default="config_inference/camera_info.yaml",
-        help='camera info file')
+    parser.add_argument(
+        "--config", "-cfg", type=str, help='folder for the inference configs',
+        default=os.path.dirname(os.path.realpath(__file__)) + 
+        "/config_inference/config_pose.yaml"
+    )
+    parser.add_argument(
+        "--camera", "-c", type=str, help='camera info file',
+        default=os.path.dirname(os.path.realpath(__file__)) + 
+        "/config_inference/camera_info.yaml",
+    )
     parser.add_argument('--realsense',
         action='store_true',
         help='use the realsense camera')
