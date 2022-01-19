@@ -4,7 +4,6 @@
 # Part of the codes are adapted from NVIDIA PoseRBPF
 # Copyright (c) 2020 NVIDIA Corporation. All rights reserved.
 # This work is licensed under the NVIDIA Source Code License - Non-commercial.
-# Full
 # Copyright 2022 The Ambitious Folks of the MRG
 
 import argparse
@@ -13,6 +12,7 @@ import os
 
 import torch
 from networks.aae_models import AAE
+from networks.roi_align import ROIAlign
 
 
 class PoseEva:
@@ -39,6 +39,8 @@ class PoseEva:
         self._encoder_ = copy.deepcopy(self._aae_.encoder)
 
         # Load codebook and codeposes
+        assert os.path.isfile(codebook_file), \
+            "Error: Codebook file doesn't exist!"
         self._codepose_ = torch.load(codebook_file)[1].cpu().numpy()
         self._codebook_ = torch.load(codebook_file)[0]
         assert self._codebook_.size(0) > 0, "Error: Codebook is empty!"
@@ -46,22 +48,53 @@ class PoseEva:
         # Set intrinsics
         self._intrinsics_ = intrinsics
 
-    def computeCosSimMat(self, code, codebook, eps=1e-8):
+    def get_rois_cuda(self, image, uvs, zs, fu, fv, target_distance=2.5,
+                      out_size=128):
         """
-        Compute the cosine similarity matrix btw two code tensors
-        @param code: [Tensor] batch of codes from the encoder
-        (batch size * code size)
-        @param codebook: [Tensor] codebook
-        (codebook size * code size)
-        @return matrix: [Tensor] cosine similarity matrix
-        (batch size * code book size)
+        Crop the regions of interest (ROIs) from an image
+        @param image: [Tensor] Source image (height x width x channel)
+        @param uvs: [Tensor] Centers of the ROIs [[u1, v1], ..., [un, vn]]
+        @param zs: [Tensor] Z of object's 3D translation [[z1], ..., [zn]]
+        @param fu: [float] camera focal length fx for the current image
+        @param fv: [float] camera focal length fy for the current image
+        @param target_distance: [float] Scale the object in img to center at
+        target distance
+        @param out_size: [int] Out image size
+        @return out: [Tensor] Bounding boxes
+        @return uv_scale: [Tensor] Scales of the bounding boxes
         """
-        dot_product = torch.mm(code, torch.t(codebook))
-        code_norm = torch.norm(code, 2, 1).unsqueeze(1)
-        codebook_norm = torch.norm(codebook, 2, 1).unsqueeze(1)
-        normalizer = torch.mm(code_norm, torch.t(codebook_norm))
+        # camera intrinsics used to compute the codebooks
+        fu0, fv0 = 1066.778, 1067.487
 
-        return dot_product / normalizer.clamp(min=eps)
+        # Convert [height, width, channel] to [1, channel, height, width]
+        image = image.permute(2, 0, 1).float().unsqueeze(0).cuda()
+
+        # Compute bounding box width and height
+        bbox_u = \
+            target_distance * (1 / zs) / fu0 * fu * out_size / image.size(3)
+        bbox_u = torch.from_numpy(bbox_u).cuda().float().squeeze(1)
+        bbox_v = \
+            target_distance * (1 / zs) / fv0 * fv * out_size / image.size(2)
+        bbox_v = torch.from_numpy(bbox_v).cuda().float().squeeze(1)
+
+        # Compute bounding box centers
+        center_uvs = torch.from_numpy(uvs).cuda().float()
+        center_uvs[:, 0] /= image.size(3)
+        center_uvs[:, 1] /= image.size(2)
+
+        # Compute bounding box vertices
+        boxes = torch.zeros(center_uvs.size(0), 5).cuda()
+        boxes[:, 1] = (center_uvs[:, 0] - bbox_u/2) * float(image.size(3))
+        boxes[:, 2] = (center_uvs[:, 1] - bbox_v/2) * float(image.size(2))
+        boxes[:, 3] = (center_uvs[:, 0] + bbox_u/2) * float(image.size(3))
+        boxes[:, 4] = (center_uvs[:, 1] + bbox_v/2) * float(image.size(2))
+
+        # Crop the ROIs from the image
+        out = ROIAlign((out_size, out_size), 1.0, 0)(image, boxes)
+
+        uv_scale = target_distance * (1 / zs) / fu0 * fu
+
+        return out, uv_scale
 
 
 if __name__ == '__main__':
