@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import torch
-from networks import _C
+# import torch
+from networks import _C  # type:ignore
 from torch import nn
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
