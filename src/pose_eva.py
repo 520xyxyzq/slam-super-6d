@@ -10,9 +10,11 @@ import argparse
 import copy
 import os
 
+# import numpy as np
 import torch
 from networks.aae_models import AAE
-from networks.roi_align import ROIAlign
+# from PIL import Image
+from torchvision.ops import RoIAlign
 
 
 class PoseEva:
@@ -51,16 +53,17 @@ class PoseEva:
     def get_rois_cuda(self, image, uvs, zs, fu, fv, target_distance=2.5,
                       out_size=128):
         """
-        Crop the regions of interest (ROIs) from an image
+        Crop the regions of interest (ROIs) from an image.
+        The ROI is zero-padded if it exceeds the boundaries
         @param image: [Tensor] Source image (height x width x channel)
-        @param uvs: [Tensor] Centers of the ROIs [[u1, v1], ..., [un, vn]]
-        @param zs: [Tensor] Z of object's 3D translation [[z1], ..., [zn]]
+        @param uvs: [array] Centers of the ROIs [[u1, v1, 1],...,[un, vn, 1]]
+        @param zs: [array] Z of object's 3D translation [[z1],...,[zn]]
         @param fu: [float] camera focal length fx for the current image
         @param fv: [float] camera focal length fy for the current image
-        @param target_distance: [float] Scale the object in img to center at
-        target distance
+        @param target_distance: [float] Scale the object in img to make it
+        centered at target distance in the 3D space
         @param out_size: [int] Out image size
-        @return out: [Tensor] Bounding boxes
+        @return out: [Tensor] Bounding boxes (1 x channel x height x width]
         @return uv_scale: [Tensor] Scales of the bounding boxes
         """
         # camera intrinsics used to compute the codebooks
@@ -90,7 +93,7 @@ class PoseEva:
         boxes[:, 4] = (center_uvs[:, 1] + bbox_v/2) * float(image.size(2))
 
         # Crop the ROIs from the image
-        out = ROIAlign((out_size, out_size), 1.0, 0)(image, boxes)
+        out = RoIAlign((out_size, out_size), 1.0, 0)(image, boxes)
 
         uv_scale = target_distance * (1 / zs) / fu0 * fu
 
