@@ -66,6 +66,45 @@ class PoseEva:
             img_np = np.asarray(img).copy() / 255.0
             self._imgs_.append(torch.from_numpy(img_np))
 
+    def computeCosSimMatrix(self, image, uvs, zs, target_distance=2.5):
+        """
+        Compute Cosine similarity matrix for an object ROI in image
+        @param image: [Tensor] Source image (height x width x channel)
+        @param uvs: [Tensor] Centers of the ROIs [[u1, v1],...,[un, vn]]
+        @param zs: [Tensor] Z of object's 3D translation [[z1],...,[zn]]
+        @param target_distance: [float] Scale the object in img to make it
+        centered at target distance in the 3D space
+        @return cosine_distance_matrix: [Tensor] Cosine similarity matrix
+        """
+        images_roi_cuda, _ = self.get_rois_cuda(
+            image.detach(), uvs, zs,
+            self._intrinsics_[0],  self._intrinsics_[1],
+            target_distance, out_size=128
+        )
+
+        # Plot 1st ROI to debug
+        # np_img = (images_roi_cuda[0, :, :, :]).permute(
+        #     1, 2, 0).detach().cpu().numpy()
+        # import cv2
+        # cv2.imshow("a",  np_img)
+        # cv2.waitKey(0)
+
+        # Forward passing
+        n_rois = zs.shape[0]
+        class_info = torch.ones((1, 1, 128, 128), dtype=torch.float32)
+        class_info_cuda = class_info.cuda().repeat(n_rois, 1, 1, 1)
+        images_input_cuda = torch.cat(
+            (images_roi_cuda.detach(), class_info_cuda.detach()), dim=1
+        )
+        codes = self._encoder_.forward(images_input_cuda).\
+            view(images_input_cuda.size(0), -1).detach()
+
+        # Compute the similarity between codes and the codebook
+        cosine_distance_matrix = \
+            self._aae_.compute_distance_matrix(codes, self._codebook_)
+
+        return cosine_distance_matrix
+
     def get_rois_cuda(self, image, uvs, zs, fu, fv, target_distance=2.5,
                       out_size=128):
         """
