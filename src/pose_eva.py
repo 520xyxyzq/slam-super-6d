@@ -18,9 +18,13 @@ from torchvision.ops import RoIAlign
 
 
 class PoseEva:
-    def __init__(self, obj, ckpt_file, codebook_file, intrinsics):
+    def __init__(self, img_folder, img_ext, obj, ckpt_file, codebook_file,
+                 intrinsics):
         """
-        Load codebook and initialize Auto-Encoder model
+        Load images, codebook and initialize Auto-Encoder model
+        @param img_folder: [string] Path to test image folder
+        @param img_ext: [string] Extension used to identify test image files
+        in img_folder (e.g.: "-color.png" for YCB-V images)
         @param obj: [string] Object name
         @param ckpt_file: [string] Path to object's checkpoint
         @param codebook_file: [string] Path to obj's codebook
@@ -104,6 +108,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--images", "-i", type=str, help="The folder with test images",
+        default="/home/ziqi/Desktop/data/"
+    )
+    parser.add_argument(
+        "--img_ext", "-ext", type=str, default="*-color.png",
+        help="Extension used to identify test images files in folder"
+    )
+    parser.add_argument(
         "--obj", "-o", type=str, help="Object name",
         default="010_potted_meat_can"
     )
@@ -124,7 +136,10 @@ if __name__ == '__main__':
     codebook = args.codebook if args.codebook[-1] == "/" \
         else args.codebook + "/"
     ckpt = args.ckpt if args.ckpt[-1] == "/" else args.ckpt + "/"
+    img_folder = args.images if args.images[-1] == "/" else args.images + "/"
     codebook += args.obj + ".pth"
     ckpt += args.obj + ".pth"
 
-    pe = PoseEva(args.obj, ckpt, codebook, args.intrinsics)
+    pe = PoseEva(
+        img_folder, args.img_ext, args.obj, ckpt, codebook, args.intrinsics
+    )
