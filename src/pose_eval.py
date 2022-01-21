@@ -21,7 +21,7 @@ from torchvision.ops import RoIAlign
 from transforms3d.quaternions import qmult
 
 
-class PoseEva:
+class PoseEval:
     def __init__(self, imgs, obj, ckpt_file, codebook_file, intrinsics):
         """
         Load images, codebook and initialize Auto-Encoder model
@@ -266,6 +266,6 @@ if __name__ == '__main__':
     codebook += args.obj + ".pth"
     ckpt += args.obj + ".pth"
 
-    pe = PoseEva(
+    pe = PoseEval(
         img_folder + args.img_ext, args.obj, ckpt, codebook, args.intrinsics
     )
