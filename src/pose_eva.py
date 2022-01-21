@@ -22,13 +22,11 @@ from transforms3d.quaternions import qmult
 
 
 class PoseEva:
-    def __init__(self, img_folder, img_ext, obj, ckpt_file, codebook_file,
-                 intrinsics):
+    def __init__(self, imgs, obj, ckpt_file, codebook_file, intrinsics):
         """
         Load images, codebook and initialize Auto-Encoder model
-        @param img_folder: [string] Path to test image folder
-        @param img_ext: [string] Extension used to identify test image files
-        in img_folder (e.g.: "-color.png" for YCB-V images)
+        @param imgs: [string] Path to test image folder
+        (e.g.: "<ycb_data>/*-color.png" for YCB-V images)
         @param obj: [string] Object name
         @param ckpt_file: [string] Path to object's checkpoint
         @param codebook_file: [string] Path to obj's codebook
@@ -64,7 +62,7 @@ class PoseEva:
         )
 
         # Load test images in order
-        img_fnames = sorted(glob.glob(img_folder + img_ext))
+        img_fnames = sorted(glob.glob(imgs))
         assert (len(img_fnames) > 0), \
             "Error: No image in folder, check folder name and img extension"
         self._imgs_ = []
@@ -269,5 +267,5 @@ if __name__ == '__main__':
     ckpt += args.obj + ".pth"
 
     pe = PoseEva(
-        img_folder, args.img_ext, args.obj, ckpt, codebook, args.intrinsics
+        img_folder + args.img_ext, args.obj, ckpt, codebook, args.intrinsics
     )
