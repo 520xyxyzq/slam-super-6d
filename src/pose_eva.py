@@ -8,12 +8,13 @@
 
 import argparse
 import copy
+import glob
 import os
 
-# import numpy as np
+import numpy as np
 import torch
 from networks.aae_models import AAE
-# from PIL import Image
+from PIL import Image
 from torchvision.ops import RoIAlign
 
 
@@ -53,6 +54,17 @@ class PoseEva:
 
         # Set intrinsics
         self._intrinsics_ = intrinsics
+
+        # Load test images in order
+        img_fnames = sorted(glob.glob(img_folder + img_ext))
+        assert (len(img_fnames) > 0), \
+            "Error: No image in folder, check folder name and img extension"
+        self._imgs_ = []
+        for img_file in img_fnames:
+            img = Image.open(img_file)
+            # NOTE: Don't forget to normalize the images
+            img_np = np.asarray(img).copy() / 255.0
+            self._imgs_.append(torch.from_numpy(img_np))
 
     def get_rois_cuda(self, image, uvs, zs, fu, fv, target_distance=2.5,
                       out_size=128):
