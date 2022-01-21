@@ -55,6 +55,11 @@ class PoseEva:
 
         # Set intrinsics
         self._intrinsics_ = intrinsics
+        # GTSAM intrinsics
+        self._K_ = gtsam.Cal3_S2(
+            intrinsics[0], intrinsics[1], intrinsics[4], intrinsics[2],
+            intrinsics[3]
+        )
 
         # Load test images in order
         img_fnames = sorted(glob.glob(img_folder + img_ext))
