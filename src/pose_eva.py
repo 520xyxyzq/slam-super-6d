@@ -95,7 +95,7 @@ class PoseEva:
         @param zs: [array] Z of object's 3D translation [[z1],...,[zn]]
         @param target_distance: [float] Scale the object in img to make it
         centered at target distance in the 3D space
-        @return cosine_distance_matrix: [Tensor] Cosine similarity matrix
+        @return cosine_distance_matrix: [array] Cosine similarity matrix
         """
         images_roi_cuda, _ = self.get_rois_cuda(
             image.detach(), uvs, zs,
@@ -124,7 +124,7 @@ class PoseEva:
         cosine_distance_matrix = \
             self._aae_.compute_distance_matrix(codes, self._codebook_)
 
-        return cosine_distance_matrix
+        return cosine_distance_matrix.cpu().numpy()
 
     def get_rois_cuda(self, image, uvs, zs, fu, fv, target_distance=2.5,
                       out_size=128):
