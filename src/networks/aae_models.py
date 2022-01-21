@@ -18,7 +18,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import torch.optim as optim
 import torch.utils.data
-from networks.roi_align import ROIAlign
+from torchvision.ops import RoIAlign
 from torch.autograd import Variable
 from transforms3d.quaternions import *
 
@@ -82,7 +82,7 @@ class encoder_rgbd(nn.Module):
             nn.Conv2d(256 * capacity, 512 * capacity, 5, stride=2, padding=2),
             nn.ReLU(),
         )
-        self.roi_layer = ROIAlign((16, 16), 1.0, 0)
+        self.roi_layer = RoIAlign((16, 16), 1.0, 0)
         self.fc_rgb = nn.Linear(512 * 8 * 8 * capacity, code_dim)
 
         # for depth
@@ -103,7 +103,7 @@ class encoder_rgbd(nn.Module):
             nn.ReLU(),
         )
         self.fc_depth = nn.Linear(256 * 8 * 8 * capacity, code_dim)
-        self.roi_layer_d = ROIAlign((128, 128), 1.0, 0)
+        self.roi_layer_d = RoIAlign((128, 128), 1.0, 0)
 
     def forward_rgb(self, x, roi):
         # note here roi is represented in 256x256 image [upper_left_u, upper_left_v, lower_right_u, lower_right_v]
