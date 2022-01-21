@@ -14,6 +14,7 @@ import numpy as np
 from evo.core import metrics, sync
 from evo.main_ape import ape as ape_result
 from evo.tools import file_interface
+from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
 from transforms3d.quaternions import qisunit
@@ -618,7 +619,7 @@ class PseudoLabeler(object):
         self._outliers_ = outliers
 
     def saveData(self, out, img_dim, intrinsics, det_std=[0.1], mode=0,
-                 verbose=False):
+                 pose_eval=None, verbose=False):
         """
         Save data (pseudo labels & hard examples' stamps) to target folder
         @param out: [string] Target folder to save results
@@ -626,6 +627,7 @@ class PseudoLabeler(object):
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
         @param det_std: [array, noiseModel] Detection noise stds for chi2 test
         @param mode: [int] Pseudo labeling mode: SLAM v.s. Inlier v.s. Hybrid
+        @param pose_eval: [PoseEval or None] Pose evaluation module
         @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
@@ -637,6 +639,10 @@ class PseudoLabeler(object):
         # Make sure saveData is called after self.solve()
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before saving data"
+        if mode == LabelingMode.Hybrid:
+            assert(pose_eval is not None), \
+                "Error: Pose evaluation is None, check labeling mode and input"
+            self._pose_eval_ = pose_eval
         # Use chi2 test to find outliers
         errors = self.getFactorErrors(self._fg_, self._result_)
         self.labelOutliers(errors, det_std)
@@ -910,6 +916,22 @@ if __name__ == '__main__':
         help="Pseudo labeling mode: SLAM (0), Inlier (1), Hybrid (2)."
     )
     parser.add_argument(
+        "--imgs", "-i", type=str, help="Path to images (with extensions)",
+        default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/0001/*-color.png"
+    )
+    parser.add_argument(
+        "--obj", "-obj", type=str, default="010_potted_meat_can",
+        help="Object name"
+    )
+    parser.add_argument(
+        "--ckpt", "-cp", type=str, help="Path to the AAE checkpoint folder",
+        default=os.path.dirname(os.path.realpath(__file__)) + "/checkpoints/"
+    )
+    parser.add_argument(
+        "--codebook", "-c", type=str, help="Path to the codebook folder",
+        default=os.path.dirname(os.path.realpath(__file__)) + "/codebooks/"
+    )
+    parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
     )
     parser.add_argument(
@@ -932,9 +954,22 @@ if __name__ == '__main__':
         pl.buildGraph(args.prior_noise, args.odom_noise,
                       args.det_noise, args.kernel, args.kernel_param)
         pl.solve(args.optim, verbose=args.verbose)
+
+    # Instantiate pose evaluation module if labeling mode is "Hybrid"
+    pose_eval = None
+    if args.mode == LabelingMode.Hybrid:
+        codebook = args.codebook if args.codebook[-1] == "/" \
+            else args.codebook + "/"
+        ckpt = args.ckpt if args.ckpt[-1] == "/" else args.ckpt + "/"
+        codebook += args.obj + ".pth"
+        ckpt += args.obj + ".pth"
+        pose_eval = PoseEval(
+            args.imgs, args.obj, ckpt, codebook, args.intrinsics
+        )
+
     pl.saveData(
         target_folder, args.img_dim, args.intrinsics, det_std=args.det_noise,
-        mode=args.mode, verbose=args.verbose
+        mode=args.mode, pose_eval=pose_eval, verbose=args.verbose
     )
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
     # Plot or save the traj and landmarks
