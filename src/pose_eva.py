@@ -11,6 +11,7 @@ import copy
 import glob
 import os
 
+import gtsam
 import numpy as np
 import torch
 from networks.aae_models import AAE
@@ -66,12 +67,27 @@ class PoseEva:
             img_np = np.asarray(img).copy() / 255.0
             self._imgs_.append(torch.from_numpy(img_np))
 
+    def pose2RoICenter(self, pose):
+        """
+        Convert object pose to object's RoI center in image
+        NOTE: Assuming object coord origin is at object center
+        @param pose: [gtsam.Pose3] Object pose (x y z qx qy qz qw)
+        @return center: [Nx2 array] Centers of the ROIs [[u1, v1],...,[un, vn]]
+        """
+        # NOTE: Assume camera follow (x right y down z out) convention
+        assert(pose.z() > 0), "Error: object (relative) pose must be positive"
+        # Project object center to image
+        cam = gtsam.PinholeCameraCal3_S2(gtsam.Pose3(), self._K_)
+        point = cam.project(pose.translation())
+        center = np.array([point])
+        return center
+
     def computeCosSimMatrix(self, image, uvs, zs, target_distance=2.5):
         """
         Compute Cosine similarity matrix for an object ROI in image
         @param image: [Tensor] Source image (height x width x channel)
-        @param uvs: [Tensor] Centers of the ROIs [[u1, v1],...,[un, vn]]
-        @param zs: [Tensor] Z of object's 3D translation [[z1],...,[zn]]
+        @param uvs: [array] Centers of the ROIs [[u1, v1],...,[un, vn]]
+        @param zs: [array] Z of object's 3D translation [[z1],...,[zn]]
         @param target_distance: [float] Scale the object in img to make it
         centered at target distance in the 3D space
         @return cosine_distance_matrix: [Tensor] Cosine similarity matrix
@@ -86,7 +102,7 @@ class PoseEva:
         # np_img = (images_roi_cuda[0, :, :, :]).permute(
         #     1, 2, 0).detach().cpu().numpy()
         # import cv2
-        # cv2.imshow("a",  np_img)
+        # cv2.imshow("a",  np_img[:, :, ::-1])
         # cv2.waitKey(0)
 
         # Forward passing
