@@ -16,7 +16,9 @@ import numpy as np
 import torch
 from networks.aae_models import AAE
 from PIL import Image
+from scipy.spatial import cKDTree
 from torchvision.ops import RoIAlign
+from transforms3d.quaternions import qmult
 
 
 class PoseEva:
@@ -71,6 +73,60 @@ class PoseEva:
             # NOTE: Don't forget to normalize the images
             img_np = np.asarray(img).copy() / 255.0
             self._imgs_.append(torch.from_numpy(img_np))
+
+    def isMatch(self, img_idx, pose, score_thresh=0.5, quat_thresh=0.1):
+        """
+        Whether the pose is a good match for the image
+        @param img_idx: [int] Index for test image in self._imgs_
+        @param pose: [gtsam.Pose3] Object pose (wrt camera frame)
+        @param score_thresh: [float] Threshold for cosine similarity score
+        @param quat_thresh: [float] Threshold for distance between the object's
+        quaternion and its nearest neighbor with score > score_threshold
+        @return isMatch: [bool] The pose is consistent with the image
+        """
+        # Compute the cosine similarity matrix
+        assert(img_idx < len(self._imgs_)), "Error: Image index > # Images"
+        img = self._imgs_[img_idx]
+        roi_center = self.pose2RoICenter(pose)
+        obj_center_depth = np.array([[pose.z()]])
+        cosSimMat = self.computeCosSimMatrix(img, roi_center, obj_center_depth)
+
+        # Not a match if all scores are below score_thresh
+        if np.max(cosSimMat) < score_thresh:
+            return False
+
+        # Find all the quaternion above threshold
+        assert(cosSimMat.shape[0] == 1), \
+            "Error: Cosine similarity matrix wrong shape, should never happen!"
+        codeposes = self._codepose_[np.argwhere(
+            cosSimMat.ravel() > score_thresh).ravel(), :]
+
+        # NOTE: DOPE object coordinate is difference from PoseRBPF!!!
+        # Applying a rotation transformation to align with PoseRBPF
+        q_trans = np.array([0.5, 0.5, -0.5, 0.5])
+        quat = qmult(pose.rotation().quaternion(), q_trans)
+
+        # Find nearest neighbor and compute distance
+        # NOTE: Need to query both q and -q
+        kdtree = cKDTree(codeposes[:, 3:])
+        dist1, idx1 = kdtree.query(quat)
+        dist2, idx2 = kdtree.query(-quat)
+
+        # Uncomment to debug
+        # quat_pos = codeposes[idx1, 3:]
+        # quat_neg = codeposes[idx2, 3:]
+        # score_above_thresh = cosSimMat[cosSimMat > score_thresh]
+        # print("Detected quaternion & nearest neighbor: ", quat, quat_pos)
+        # print("- Detected quaternion & nearest neighbor: ", -quat, quat_neg)
+        # print("Score: ", score_above_thresh[idx1], "; Distance: ", dist1)
+        # print("-q Score: ", score_above_thresh[idx2], "; Distance: ", dist2)
+        # print("Highest score: ", np.max(cosSimMat))
+
+        # TODO: Use better distance function (Euclidean for now)
+        # Not a match if the nearest neighbor has distance below quat_thresh
+        if min(dist1, dist2) > quat_thresh:
+            return False
+        return True
 
     def pose2RoICenter(self, pose):
         """
