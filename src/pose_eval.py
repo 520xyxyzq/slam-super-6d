@@ -72,15 +72,16 @@ class PoseEval:
             img_np = np.asarray(img).copy() / 255.0
             self._imgs_.append(torch.from_numpy(img_np))
 
-    def isMatch(self, img_idx, pose, score_thresh=0.5, quat_thresh=0.1):
+    def simScore(self, img_idx, pose, score_thresh=0.5, quat_thresh=0.1):
         """
-        Whether the pose is a good match for the image
+        Check whether the pose is a good match and return cosine sim score
         @param img_idx: [int] Index for test image in self._imgs_
         @param pose: [gtsam.Pose3] Object pose (wrt camera frame)
         @param score_thresh: [float] Threshold for cosine similarity score
         @param quat_thresh: [float] Threshold for distance between the object's
         quaternion and its nearest neighbor with score > score_threshold
-        @return isMatch: [bool] The pose is consistent with the image
+        @return simScore: [None/float] Cosine similarity score if the pose
+        matches the image else None
         """
         # Compute the cosine similarity matrix
         assert(img_idx < len(self._imgs_)), "Error: Image index > # Images"
@@ -91,7 +92,7 @@ class PoseEval:
 
         # Not a match if all scores are below score_thresh
         if np.max(cosSimMat) < score_thresh:
-            return False
+            return None
 
         # Find all the quaternion above threshold
         assert(cosSimMat.shape[0] == 1), \
@@ -123,8 +124,10 @@ class PoseEval:
         # TODO: Use better distance function (Euclidean for now)
         # Not a match if the nearest neighbor has distance below quat_thresh
         if min(dist1, dist2) > quat_thresh:
-            return False
-        return True
+            return None
+        score_above_thresh = cosSimMat[cosSimMat > score_thresh]
+        score = max(score_above_thresh[idx1], score_above_thresh[idx2])
+        return score
 
     def pose2RoICenter(self, pose):
         """
