@@ -653,9 +653,9 @@ class PseudoLabeler(object):
             data = self.assembleData(plabel)
             out_fname = self._det_fnames_[ii]
             # Save hard examples (false positives and false negatives) to files
-            fp = self._outliers_[ii]
+            fp = [stamp for stamp in self._outliers_[ii] if stamp in plabel]
             fn = [stamp for stamp in data[:, 0]
-                  if stamp not in self._dets_[ii]]
+                  if stamp not in self._dets_[ii] and stamp in plabel]
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
 
