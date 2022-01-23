@@ -90,7 +90,7 @@ class PoseEval:
         matches the image else None
         """
         # Rule out poses with zero z translation, which causes numerical issues
-        if np.isclose(pose.z(), 0):
+        if np.isclose(pose.z(), 0, atol=1e-2):
             return None
 
         # Compute the cosine similarity matrix
