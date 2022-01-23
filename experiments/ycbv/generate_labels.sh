@@ -7,6 +7,8 @@
 obj=${1:-004_sugar_box_16k}
 # Where you save the pseudo labels
 out_folder=${2:-~/Desktop/test}
+# Where you store the YCB-V data folder
+ycb_folder=${3:-/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data}
 
 # TODO(ZQ): check whether out_folder is empty before execution
 # TODO(zq): fix path endings i.e. "/"
@@ -30,6 +32,7 @@ do
     det_fname=$(basename $det)
     # Get seq id from file name
     seq=${det_fname:0:4}
+    echo "Generating seq $seq"
     # Get odometry txt real path
     odom=$odom_folder/$seq.txt
     # Ground truth object poses
@@ -38,6 +41,7 @@ do
     gt_cam=$gt_cam_folder/$seq.txt
     # Optimize!
     python3 $pseudo_labeler --odom $odom --dets $det --out $out_folder \
-    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 2 --optim 1 -dn 0.08 \
-    --save --verbose
+    --obj ${obj:0:-4} --imgs "$ycb_folder/$seq/*-color.png" \
+    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 0 --optim 1 -j -l 10000 -m 1 \
+    --save
 done
