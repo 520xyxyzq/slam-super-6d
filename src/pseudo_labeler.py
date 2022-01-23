@@ -921,7 +921,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--obj", "-obj", type=str, default="010_potted_meat_can",
-        help="Object name"
+        help="Object name (No _16k!!)"
     )
     parser.add_argument(
         "--ckpt", "-cp", type=str, help="Path to the AAE checkpoint folder",
@@ -930,6 +930,11 @@ if __name__ == '__main__':
     parser.add_argument(
         "--codebook", "-c", type=str, help="Path to the codebook folder",
         default=os.path.dirname(os.path.realpath(__file__)) + "/codebooks/"
+    )
+    parser.add_argument(
+        "--ycb_json", type=str, help="Path to the _ycb_original.json file",
+        default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
+        "/experiments/ycbv/_ycb_original.json"
     )
     parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
@@ -942,6 +947,20 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
+
+    # If intrinsics not passed in but ycb seq number < 60, use default
+    # If intrinsics not passed in but ycb seq number >= 60, use 2nd default
+    seq = os.path.basename(args.odom)[:4]
+    if seq.isnumeric() and \
+            args.intrinsics == [1066.778, 1067.487, 312.9869, 241.3109, 0]:
+        if int(seq) < 60:
+            intrinsics = args.intrinsics
+        else:
+            # Default camera model is changed for seq 0060 ~ 0091 in YCB-V
+            intrinsics = [1077.836, 1078.189, 323.7872, 279.6921, 0]
+    else:
+        # If intrinsics passed in, use it
+        intrinsics = args.intrinsics
 
     pl = PseudoLabeler(args.odom, args.dets)
     assert(len(pl._dets_) > 0), "No Object detection in the sequence"
@@ -963,12 +982,27 @@ if __name__ == '__main__':
         ckpt = args.ckpt if args.ckpt[-1] == "/" else args.ckpt + "/"
         codebook += args.obj + ".pth"
         ckpt += args.obj + ".pth"
+        import json
+
+        # Open _ycb_original.json to load models' static transformations
+        with open(args.ycb_json) as yj:
+            transforms = json.load(yj)
+        # Names of all YCB objects
+        class_names = transforms["exported_object_classes"]
+        # Find index of the current object
+        obj_id = class_names.index(args.obj + "_16k")
+        # Load fixed transform for the obj (YCB to DOPE defined coordinate)
+        # NOTE: this is the transform of the original frame wrt the new frame
+        obj_transf = \
+            transforms["exported_objects"][obj_id]["fixed_model_transform"]
+        obj_transf = np.array(obj_transf).T
+        obj_transf[:3, :] /= 100  # [cm] to [m]
         pose_eval = PoseEval(
-            args.imgs, args.obj, ckpt, codebook, args.intrinsics
+            args.imgs, args.obj, ckpt, codebook, intrinsics, obj_transf
         )
 
     pl.saveData(
-        target_folder, args.img_dim, args.intrinsics, det_std=args.det_noise,
+        target_folder, args.img_dim, intrinsics, det_std=args.det_noise,
         mode=args.mode, pose_eval=pose_eval, verbose=args.verbose
     )
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
