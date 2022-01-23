@@ -533,12 +533,12 @@ class PseudoLabeler(object):
             for jj, stamp in enumerate(self._stamps_):
                 cam_pose = self._result_.atPose3(X(jj))
                 rel_obj_pose = cam_pose.inverse().compose(lm_pose)
-                # Skip is object center not in image
-                if not self.isInImage(rel_obj_pose):
-                    if verbose:
-                        print("Obj %d not in image at stamp %.1f" %
-                              (ii, stamp))
-                    continue
+                # Skip if object center not in image
+                # if not self.isInImage(rel_obj_pose):
+                #     if verbose:
+                #         print("Obj %d not in image at stamp %.1f" %
+                #               (ii, stamp))
+                #     continue
                 if mode == LabelingMode.SLAM:
                     obj_dets[stamp] = rel_obj_pose
                 elif mode == LabelingMode.Inlier:
