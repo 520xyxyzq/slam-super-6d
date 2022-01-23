@@ -89,6 +89,10 @@ class PoseEval:
         @return simScore: [None/float] Cosine similarity score if the pose
         matches the image else None
         """
+        # Rule out poses with zero z translation, which causes numerical issues
+        if np.isclose(pose.z(), 0):
+            return None
+
         # Compute the cosine similarity matrix
         assert(img_idx < len(self._imgs_)), "Error: Image index > # Images"
         img = self._imgs_[img_idx]
