@@ -52,6 +52,7 @@ class LabelingMode(IntEnum):
     SLAM = 0
     Inlier = 1
     Hybrid = 2
+    PoseEval = 3
 
 
 class PseudoLabeler(object):
@@ -547,8 +548,15 @@ class PseudoLabeler(object):
                     if stamp not in self._outliers_[ii]:
                         obj_dets[stamp] = self._dets_[ii][stamp]
                 elif mode == LabelingMode.Hybrid:
-                    # TODO(ZQ): implement this
                     pass
+                elif mode == LabelingMode.PoseEval:
+                    if stamp not in self._dets_[ii]:
+                        continue
+                    score = self._pose_eval_.simScore(
+                        jj, self._dets_[ii][stamp], 0.5
+                    )
+                    if score:
+                        obj_dets[stamp] = self._dets_[ii][stamp]
                 else:
                     assert(False), "Error: Unknown pseudo labeling mode!"
             self._plabels_.append(obj_dets)
@@ -639,7 +647,7 @@ class PseudoLabeler(object):
         # Make sure saveData is called after self.solve()
         assert(hasattr(self, "_result_")), \
             "Error: No PGO results yet, please solve PGO before saving data"
-        if mode == LabelingMode.Hybrid:
+        if mode in [LabelingMode.Hybrid, LabelingMode.PoseEval]:
             assert(pose_eval is not None), \
                 "Error: Pose evaluation is None, check labeling mode and input"
             self._pose_eval_ = pose_eval
@@ -976,7 +984,7 @@ if __name__ == '__main__':
 
     # Instantiate pose evaluation module if labeling mode is "Hybrid"
     pose_eval = None
-    if args.mode == LabelingMode.Hybrid:
+    if args.mode in [LabelingMode.Hybrid, LabelingMode.PoseEval]:
         codebook = args.codebook if args.codebook[-1] == "/" \
             else args.codebook + "/"
         ckpt = args.ckpt if args.ckpt[-1] == "/" else args.ckpt + "/"
