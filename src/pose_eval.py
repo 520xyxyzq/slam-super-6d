@@ -9,6 +9,7 @@
 import argparse
 import copy
 import glob
+import json
 import os
 
 import gtsam
@@ -18,11 +19,12 @@ from networks.aae_models import AAE
 from PIL import Image
 from scipy.spatial import cKDTree
 from torchvision.ops import RoIAlign
-from transforms3d.quaternions import qmult
+from transforms3d.quaternions import mat2quat, qmult
 
 
 class PoseEval:
-    def __init__(self, imgs, obj, ckpt_file, codebook_file, intrinsics):
+    def __init__(self, imgs, obj, ckpt_file, codebook_file, intrinsics,
+                 transform):
         """
         Load images, codebook and initialize Auto-Encoder model
         @param imgs: [string] Path to test image folder
@@ -31,6 +33,7 @@ class PoseEval:
         @param ckpt_file: [string] Path to object's checkpoint
         @param codebook_file: [string] Path to obj's codebook
         @param intrinsics: [5-list] Camera intrinsics
+        @param transform: [4x4 array] Relative quat from DOPE to YCB coordinate
         """
         # Load Auto-Encoder model weights
         assert os.path.isfile(ckpt_file), \
@@ -72,7 +75,10 @@ class PoseEval:
             img_np = np.asarray(img).copy() / 255.0
             self._imgs_.append(torch.from_numpy(img_np))
 
-    def simScore(self, img_idx, pose, score_thresh=0.5, quat_thresh=0.1):
+        # Quaternion to convert DOPE to YCB coordinate
+        self._quat_trans_ = mat2quat(transform[:3, :3])
+
+    def simScore(self, img_idx, pose, score_thresh=0.5, quat_thresh=0.2):
         """
         Check whether the pose is a good match and return cosine sim score
         @param img_idx: [int] Index for test image in self._imgs_
@@ -97,13 +103,13 @@ class PoseEval:
         # Find all the quaternion above threshold
         assert(cosSimMat.shape[0] == 1), \
             "Error: Cosine similarity matrix wrong shape, should never happen!"
-        codeposes = self._codepose_[np.argwhere(
-            cosSimMat.ravel() > score_thresh).ravel(), :]
+        codeposes = self._codepose_[
+            np.argwhere(cosSimMat.ravel() > score_thresh).ravel(), :
+        ]
 
         # NOTE: DOPE object coordinate is difference from PoseRBPF!!!
         # Applying a rotation transformation to align with PoseRBPF
-        q_trans = np.array([0.5, 0.5, -0.5, 0.5])
-        quat = qmult(pose.rotation().quaternion(), q_trans)
+        quat = qmult(pose.rotation().quaternion(), self._quat_trans_)
 
         # Find nearest neighbor and compute distance
         # NOTE: Need to query both q and -q
@@ -161,11 +167,11 @@ class PoseEval:
         )
 
         # Plot 1st ROI to debug
-        # np_img = (images_roi_cuda[0, :, :, :]).permute(
-        #     1, 2, 0).detach().cpu().numpy()
-        # import cv2
-        # cv2.imshow("a",  np_img[:, :, ::-1])
-        # cv2.waitKey(0)
+        # np_img = (images_roi_cuda[0, :, :, :])\
+        #     .permute(1, 2, 0).detach().cpu().numpy()
+        # import matplotlib.pyplot as plt
+        # plt.imshow(np_img)
+        # plt.show()
 
         # Forward passing
         n_rois = zs.shape[0]
@@ -245,7 +251,7 @@ if __name__ == '__main__':
         help="Extension used to identify test images files in folder"
     )
     parser.add_argument(
-        "--obj", "-o", type=str, help="Object name",
+        "--obj", "-o", type=str, help="Object name (No _16k!!)",
         default="010_potted_meat_can"
     )
     parser.add_argument(
@@ -261,6 +267,11 @@ if __name__ == '__main__':
         help="Camera intrinsics: fx, fy, cx, cy, s",
         default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
     )
+    parser.add_argument(
+        "--ycb_json", type=str, help="Path to the _ycb_original.json file",
+        default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
+        "/experiments/ycbv/_ycb_original.json"
+    )
     args = parser.parse_args()
     codebook = args.codebook if args.codebook[-1] == "/" \
         else args.codebook + "/"
@@ -269,6 +280,27 @@ if __name__ == '__main__':
     codebook += args.obj + ".pth"
     ckpt += args.obj + ".pth"
 
+    # Read static transform from DOPE to YCB coordinate
+    # Open _ycb_original.json to load models' static transformations
+    with open(args.ycb_json) as yj:
+        transforms = json.load(yj)
+    # Names of all YCB objects
+    class_names = transforms["exported_object_classes"]
+    # Find index of the current object
+    obj_id = class_names.index(args.obj + "_16k")
+    # Load fixed transform for the obj (YCB to DOPE defined coordinate system)
+    # NOTE: this is the transform of the original frame wrt the new frame
+    obj_transf = \
+        transforms["exported_objects"][obj_id]["fixed_model_transform"]
+    obj_transf = np.array(obj_transf).T
+    obj_transf[:3, :] /= 100
+
     pe = PoseEval(
-        img_folder + args.img_ext, args.obj, ckpt, codebook, args.intrinsics
+        img_folder + args.img_ext, args.obj, ckpt, codebook, args.intrinsics,
+        obj_transf
     )
+    match_score = pe.simScore(
+        0, gtsam.Pose3(gtsam.Rot3.Quaternion(0.8830, 0.2992, -0.3513, -0.0851),
+                       gtsam.Point3(-0.0741, 0.0074, 1.0802))
+    )
+    print(match_score)
