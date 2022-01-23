@@ -668,8 +668,10 @@ class PseudoLabeler(object):
             hard_egs = np.array([hard_egs]).T
 
             # Save only when #dets > 5% #stamps and #outliers < 20% #dets
-            if len(self._dets_[ii]) > 0.05 * len(self._stamps_) and \
-                    len(fp) < 0.2 * len(self._dets_[ii]):
+            # Or in PoseEval labeling mode
+            if len(self._dets_[ii]) > 0.05 * len(self._stamps_) \
+                    and len(fp) < 0.2 * len(self._dets_[ii]) \
+                    or mode == LabelingMode.PoseEval:
                 np.savetxt(
                     out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
                     data, fmt=["%.1f"] + ["%.12f"] * 7
