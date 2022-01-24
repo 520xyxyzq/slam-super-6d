@@ -670,7 +670,7 @@ class PseudoLabeler(object):
             # Save only when #dets > 5% #stamps and #outliers < 20% #dets
             # Or in PoseEval labeling mode
             if len(self._dets_[ii]) > 0.05 * len(self._stamps_) \
-                    and len(fp) < 0.2 * len(self._dets_[ii]) \
+                    and len(self._outliers_[ii]) < 0.2 * len(self._dets_[ii]) \
                     or mode == LabelingMode.PoseEval:
                 np.savetxt(
                     out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
@@ -686,7 +686,8 @@ class PseudoLabeler(object):
                 print(
                     '\033[93m' +
                     "WARN: Obj %d labels not saved!! #Dets: %d; #Outliers: %d"
-                    % (ii, len(self._dets_[ii]), len(fp)) + '\033[0m'
+                    % (ii, len(self._dets_[ii]), len(self._outliers_[ii])) +
+                    '\033[0m'
                 )
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
