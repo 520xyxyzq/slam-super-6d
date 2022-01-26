@@ -73,7 +73,8 @@ class LabelEval:
         cam_pose = np.eye(4)
         cam_pose[:3, 3:] = cam_trans.reshape(3, 1)
         cam_rot = quat2mat(
-            [cam_quat[-1], cam_quat[0], cam_quat[1], cam_quat[2]])
+            [cam_quat[-1], cam_quat[0], cam_quat[1], cam_quat[2]]
+        )
         cam_pose[:3, :3] = cam_rot
         # Extrinsic matrix is inverse of camera world pose
         Rt = (np.linalg.inv(cam_pose))[:3, :]
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--gt", "-g", type=str, help="Ground truth object (relative) poses",
         default=root + "/experiments/ycbv/dets/ground_truth" +
-        "/003_cracker_box_16k/0001_ycb_gt.txt"
+        "/003_cracker_box_16k/0007_ycb_gt.txt"
     )
     parser.add_argument(
         "--intrinsics", "-in", type=float, nargs=5,
