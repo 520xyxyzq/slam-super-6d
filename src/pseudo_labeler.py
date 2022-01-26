@@ -687,7 +687,11 @@ class PseudoLabeler(object):
                 out_fname = self._det_fnames_[ii]
                 out_fname = out + out_fname[:-4] + \
                     "_obj" + str(ii) + "_error" + out_fname[-4:]
-                np.savetxt(out_fname, [[mean, median, std]], fmt="%.2f")
+                seq = os.path.basename(gt_det)[:4]
+                np.savetxt(
+                    out_fname, [[int(seq), ii, mean, median, std]],
+                    fmt=["%d"]*2 + ["%.2f"]*3
+                )
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
