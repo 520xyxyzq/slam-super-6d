@@ -11,9 +11,6 @@ import gtsam
 import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
-from evo.core import metrics, sync
-from evo.main_ape import ape as ape_result
-from evo.tools import file_interface
 from label_eval import LabelEval
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
@@ -693,88 +690,6 @@ class PseudoLabeler(object):
                     fmt=["%d"]*2 + ["%.2f"]*3
                 )
 
-    def error(self, out, gt_dets=None, verbose=False, save=False):
-        """
-        Print and save errors for pseudo labels of object pose detections
-        @param out: [string] Target folder to save data
-        @param gt_dets: [list of strings] ground truth object pose detections
-        @param verbose: [bool] Print error stats?
-        @param save: [bool] Save errors to file?
-        """
-        assert(hasattr(self, "_plabels_")), \
-            "Error: No pseudo labels yet, generate data before error analysis"
-        if gt_dets is None:
-            return
-        assert(len(gt_dets) == len(self._dets_)), \
-            "Error: #Ground truth detection files != #detection files"
-        for ii, gt_det in enumerate(gt_dets):
-            out_fname = self._det_fnames_[ii]
-            out_fname = out + out_fname[:-4] + \
-                "_obj" + str(ii) + out_fname[-4:]
-            if not os.path.isfile(out_fname):
-                # In case pseudo labels are not saved
-                print("Error analysis not performed since labels not saved.")
-                continue
-            t_error = self.ape(
-                gt_det, out_fname, save=save,
-                pose_relation=metrics.PoseRelation.translation_part,
-                out_name=out_fname[:-4] + "_t_error.zip"
-            )
-            r_error = self.ape(
-                gt_det, out_fname, save=save,
-                pose_relation=metrics.PoseRelation.rotation_angle_rad,
-                out_name=out_fname[:-4] + "_r_error.zip"
-            )
-            t_mean, t_median, t_std = \
-                t_error["mean"], t_error["median"], t_error["std"]
-            r_mean, r_median, r_std = \
-                r_error["mean"], r_error["median"], r_error["std"]
-            if verbose:
-                print("Object %d error: " % (ii))
-                print("  Translation part (m): ")
-                print("    mean: %.6f; median: %.6f; std:  %.6f" %
-                      (t_mean, t_median, t_std))
-                print("  Rotation part (rad): ")
-                print("    mean: %.6f; median: %.6f; std:  %.6f" %
-                      (r_mean, r_median, r_std))
-
-    def ape(self, traj_ref, traj_est, align_origin=False,
-            pose_relation=metrics.PoseRelation.translation_part,
-            save=False, out_name=None):
-        """
-        Compute APE btw 2 trajectories or 2 sets of detections
-        @param traj_ref: [string] Reference trajectory file (tum format)
-        @param traj_est: [string] Estimated trajectory file (tum format)
-        @param align_origin: [bool] Align the origin of two trajs?
-        @param pose_relation: [string] Metric used to compare poses,
-        e.g. "translation part", "rotation angle in radians", etc.
-        @param save: [bool] Save the result?
-        @param out_name: [str] Absolute file name to save the result
-        @return ape_stats: [dict] APE stats for the two trajs
-        """
-        assert(os.path.isfile(traj_ref)), "Error: %s not a file" % (traj_ref)
-        assert(os.path.isfile(traj_est)), "Error: %s not a file" % (traj_est)
-        # Read traj
-        ref = file_interface.read_tum_trajectory_file(traj_ref)
-        est = file_interface.read_tum_trajectory_file(traj_est)
-        # Associate trajectories using time stamps
-        ref, est = sync.associate_trajectories(ref, est)
-        if align_origin:
-            est.align_origin(ref)
-        data = (ref, est)
-        ape_metric = metrics.APE(pose_relation)
-        ape_metric.process_data(data)
-        if save:
-            assert(out_name is not None), \
-                "Error: APE result save path unspecified"
-            result = ape_result(
-                ref, est, pose_relation, align_origin=align_origin,
-                ref_name=os.path.basename(traj_ref),
-                est_name=os.path.basename(traj_est)
-            )
-            file_interface.save_res_file(out_name, result)
-        return ape_metric.get_all_statistics()
-
     def plot(self, gt_cam=None, save=False, out=None):
         """
         Plot estimation results
@@ -1035,8 +950,11 @@ if __name__ == '__main__':
             obj_dim, intrinsics, target_folder, args.gt_obj,
             verbose=args.verbose, save=args.save
         )
+    # if pl._plabels_[0] and args.gt_obj:
+    #     from evo_error import EvoError
 
-    pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
+    #     evo_error = EvoError(pl._plabels_, args.gt_obj, target_folder)
+    #     evo_error.error(verbose=args.verbose, save=args.save)
     # Plot or save the traj and landmarks
     if args.plot or args.save:
         pl.plot(args.gt_cam, args.save, target_folder)
