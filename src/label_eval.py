@@ -8,7 +8,8 @@ import os
 
 import numpy as np
 from transforms3d.quaternions import quat2mat
-from utils import gtsamPose32Tum, readTum
+
+from .utils import gtsamPose32Tum, readTum
 
 
 class LabelEval:

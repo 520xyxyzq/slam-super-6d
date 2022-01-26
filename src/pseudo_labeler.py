@@ -17,7 +17,9 @@ from evo.tools import file_interface
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from utils import gtsamPose32Tum, readTum
+
+from .label_eval import LabelEval
+from .utils import gtsamPose32Tum, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -640,6 +642,31 @@ class PseudoLabeler(object):
                     % (ii, len(self._dets_[ii]), len(self._outliers_[ii])) +
                     '\033[0m'
                 )
+
+    def labelError(self, dim, intrinsics, out, gt_dets=None, verbose=False,
+                   save=False):
+        """
+        Print and save errors for pseudo labels of object pose detections
+        @param dim: [3-list] Object dimension x, y, z
+        @param out: [string] Target folder to save data
+        @param gt_dets: [list of strings] ground truth object pose detections
+        @param verbose: [bool] Print error stats?
+        @param save: [bool] Save errors to file?
+        """
+        assert(hasattr(self, "_plabels_")), \
+            "Error: No pseudo labels yet, generate data before error analysis"
+        if gt_dets is None:
+            print(
+                '\033[93m' +
+                "WARN: Ground truth det files not passed, errors not computed"
+                '\033[0m'
+            )
+            return
+        assert(len(gt_dets) == len(self._dets_)), \
+            "Error: #Ground truth detection files != #detection files"
+        for ii, gt_det in enumerate(gt_dets):
+            label_eval = LabelEval(self._plabels_[ii], gt_det, dim, intrinsics)
+            label_eval.error()
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
