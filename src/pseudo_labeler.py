@@ -609,6 +609,12 @@ class PseudoLabeler(object):
         # Recompute obj pose detections
         self.recomputeDets(mode, verbose)
         for ii, plabel in enumerate(self._plabels_):
+            if len(plabel) == 0:
+                print('\033[93m' +
+                      "WARN: Obj %s data not saved, no valid pseudo label"
+                      % str(ii) + '\033[0m'
+                      )
+                continue
             # Save pseudo labels
             data = self.assembleData(plabel)
             out_fname = self._det_fnames_[ii]
@@ -645,7 +651,7 @@ class PseudoLabeler(object):
     def labelError(self, dim, intrinsics, out, gt_dets=None, verbose=False,
                    save=False):
         """
-        Print and save errors for pseudo labels of object pose detections
+        Print and save errors in object keypoints (pseudo labels)
         @param dim: [3-list] Object dimension x, y, z
         @param out: [string] Target folder to save data
         @param gt_dets: [list of strings] ground truth object pose detections
@@ -664,6 +670,13 @@ class PseudoLabeler(object):
         assert(len(gt_dets) == len(self._dets_)), \
             "Error: #Ground truth detection files != #detection files"
         for ii, gt_det in enumerate(gt_dets):
+            if len(self._plabels_[ii]) == 0:
+                print(
+                    '\033[93m' +
+                    "WARN: error not computed since pseudo label empty"
+                    '\033[0m'
+                )
+                continue
             label_eval = LabelEval(self._plabels_[ii], gt_det, dim, intrinsics)
             mean, median, std = label_eval.error()
             if verbose:

@@ -28,6 +28,7 @@ class LabelEval:
         else:
             assert(False), \
                 "Error: Unsupported detection format! Must be dict or str."
+        assert(len(self._dets_) > 0), "Error: recomputed detections empty!"
         # Read ground truth object pose detections
         self._gt_ = readTum(gt)
 
