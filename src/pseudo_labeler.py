@@ -665,7 +665,11 @@ class PseudoLabeler(object):
             "Error: #Ground truth detection files != #detection files"
         for ii, gt_det in enumerate(gt_dets):
             label_eval = LabelEval(self._plabels_[ii], gt_det, dim, intrinsics)
-            label_eval.error()
+            mean, median, std = label_eval.error()
+            if verbose:
+                print("Object %d keypoint location error (pixel): " % (ii))
+                print("    mean: %.2f; median: %.2f; std:  %.2f" %
+                      (mean, median, std))
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
@@ -992,6 +996,24 @@ if __name__ == '__main__':
         target_folder, args.img_dim, intrinsics, det_std=args.det_noise,
         mode=args.mode, pose_eval=pose_eval, verbose=args.verbose
     )
+
+    if args.gt_obj:
+        import json
+
+        # Open _ycb_original.json to load models' static transformations
+        with open(args.ycb_json) as yj:
+            transforms = json.load(yj)
+        # Names of all YCB objects
+        class_names = transforms["exported_object_classes"]
+        # Find index of the current object
+        obj_id = class_names.index(args.obj + "_16k")
+        # Load dimensions of the obj
+        obj_dim = transforms["exported_objects"][obj_id]["cuboid_dimensions"]
+        pl.labelError(
+            obj_dim, intrinsics, target_folder, args.gt_obj,
+            verbose=args.verbose, save=args.save
+        )
+
     pl.error(target_folder, args.gt_obj, verbose=args.verbose, save=args.save)
     # Plot or save the traj and landmarks
     if args.plot or args.save:
