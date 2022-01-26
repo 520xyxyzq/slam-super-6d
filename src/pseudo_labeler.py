@@ -14,12 +14,11 @@ import numpy as np
 from evo.core import metrics, sync
 from evo.main_ape import ape as ape_result
 from evo.tools import file_interface
+from label_eval import LabelEval
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-
-from .label_eval import LabelEval
-from .utils import gtsamPose32Tum, readTum
+from utils import gtsamPose32Tum, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
