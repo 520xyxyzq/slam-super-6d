@@ -8,14 +8,60 @@ import os
 
 import numpy as np
 from transforms3d.quaternions import quat2mat
+from utils import gtsamPose32Tum, readTum
 
 
 class LabelEval:
-    def __init__(self, dim):
+    def __init__(self, dets, gt, dim, intrinsics):
         """
+        Load recomputed and ground truth object poses
+        @param dets: [string or {stamp:gtsam.Pose3}] Recomputed object poses
+        @param gt: [string] Path to the ground truth object pose detections
         @param dim: [3 array/list] Dimension (x,y,z) of the object
+        @param intrinsics: [5-array/list] Camera intrinsics
         """
-        pass
+        # Read re-computed object pose detections
+        if type(dets) == str:
+            self._dets_ = readTum(dets)
+        elif type(dets) == dict:
+            self._dets_ = dets
+        else:
+            assert(False), \
+                "Error: Unsupported detection format! Must be dict or str."
+        # Read ground truth object pose detections
+        self._gt_ = readTum(gt)
+
+        self._dim_ = dim
+        self._intrinsics_ = intrinsics
+
+    def error(self):
+        """
+        Compute errors (statistics) in pseudo labels
+        @return mean: [float] Mean error [pixels]
+        @return median: [float] Median error [pixels]
+        @return std: [float] Standard deviation for errors [pixels]
+        """
+        error = []
+        for stamp, pose in self._gt_.items():
+            # Skip if no recomputed obj pose at this stamp
+            if stamp not in self._dets_:
+                continue
+            # Convert pose to tum format
+            pose_gt = gtsamPose32Tum(pose)
+            pose_det = gtsamPose32Tum(self._dets_[stamp])
+            # Make and project cuboid to image
+            cuboid_gt = self.add_cuboid(pose_gt[:3], pose_gt[3:], self._dim_)
+            cuboid_gt_proj = self.project_cuboid(cuboid_gt, self._intrinsics_)
+            cuboid_det = self.add_cuboid(
+                pose_det[:3], pose_det[3:], self._dim_
+            )
+            cuboid_det_proj = self.project_cuboid(
+                cuboid_det, self._intrinsics_
+            )
+            # Compute keypoint location errors in pixels
+            errors = np.linalg.norm(cuboid_det_proj - cuboid_gt_proj, axis=1)
+            error += errors.tolist()
+        return np.mean(error), np.median(error), np.std(error)
 
     def add_cuboid(self, trans, quat, dim):
         """
@@ -111,4 +157,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    label_eval = LabelEval(args.dim)
+    label_eval = LabelEval(args.det, args.gt, args.dim, args.intrinsics)
+    print(label_eval.error())
