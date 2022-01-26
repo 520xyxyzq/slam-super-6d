@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dim", "-dim", type=float, nargs=3, help="Object dimension [x y z]",
-        default=[10.1647, 8.3543, 5.7601]
+        default=[16.4036, 21.3437, 7.1800]
     )
     parser.add_argument(
         "--det", "-d", type=str, help="Recomputed object poses",
