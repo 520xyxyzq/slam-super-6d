@@ -17,7 +17,7 @@ from evo.tools import file_interface
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from transforms3d.quaternions import qisunit
+from utils import gtsamPose32Tum, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -64,7 +64,7 @@ class PseudoLabeler(object):
         @param det_files: [list of strings] Detection files for target objects
         '''
         # Read camera odometry
-        self._odom_ = self.readTum(odom_file)
+        self._odom_ = readTum(odom_file)
         assert (len(self._odom_) > 0), \
             "Error: Cam odom file empty or wrong format"
 
@@ -73,7 +73,7 @@ class PseudoLabeler(object):
         # Save also detection file names for output
         self._det_fnames_ = []
         for ll, detf in enumerate(det_files):
-            det = self.readTum(detf)
+            det = readTum(detf)
             if len(det) == 0:
                 print('\033[93m' + "Warning: no detection for object %d" % ll
                       + '\033[0m')
@@ -87,56 +87,6 @@ class PseudoLabeler(object):
 
         # Get all time stamps
         self._stamps_ = sorted(list(self._odom_.keys()))
-
-    def readTum(self, txt):
-        """
-        Read poses from txt file (tum format) into dict of GTSAM poses
-        @param txt: [string] Path to the txt file containing poses
-        @return poses: [dict] {stamp: gtsam.Pose3}
-        """
-        # TODO: assert tum format here
-        assert(os.path.isfile(txt)), "Error: %s not a file" % (txt)
-        rel_poses = np.loadtxt(txt)
-        # Read poses into dict of GTSAM poses
-        poses = {}
-        for ii in range(rel_poses.shape[0]):
-            # Skip lines with invalid quaternions
-            if (qisunit(rel_poses[ii, 4:])):
-                poses[rel_poses[ii, 0]] = \
-                    self.tum2GtsamPose3(rel_poses[ii, 1:])
-        return poses
-
-    def tum2GtsamPose3(self, tum_pose):
-        """
-        Convert tum format pose to GTSAM Pose3
-        @param tum_pose: [7-array] x,y,z,qx,qy,qz,qw
-        @return pose3: [gtsam.pose3] GTSAM Pose3
-        """
-        assert(len(tum_pose) == 7), \
-            "Error: Tum format pose must have 7 entrices"
-        tum_pose = np.array(tum_pose)
-        # gtsam quaternion order wxyz
-        qx, qy, qz = tum_pose[3:-1]
-        qw = tum_pose[-1]
-        pose3 = gtsam.Pose3(
-            gtsam.Rot3.Quaternion(qw, qx, qy, qz),
-            gtsam.Point3(tum_pose[:3])
-        )
-        return pose3
-
-    def gtsamPose32Tum(self, pose3):
-        """
-        Convert tum format pose to GTSAM Pose3
-        @param pose3: [gtsam.pose3] GTSAM Pose3
-        @return tum_pose: [7-array] x,y,z,qx,qy,qz,qw
-        """
-        tum_pose = np.ones((7,))
-        tum_pose[0:3] = pose3.translation()
-        quat = pose3.rotation().quaternion()
-        # From gtsam wxyz to tum xyzw
-        tum_pose[3:6] = quat[1:]
-        tum_pose[6] = quat[0]
-        return tum_pose
 
     def buildGraph(self, prior_noise, odom_noise, det_noise, kernel,
                    kernel_param=None, init=None):
@@ -380,6 +330,7 @@ class PseudoLabeler(object):
                 assert(hasattr(self, "_outliers_")), \
                     "Error: Outliers not labeled yet!"
                 # Regularization doesn't have outlier terms
+                # TODO: may want to use initial noise * outliers as regular
                 regular = (1/lmd)**4 * np.sum([
                     np.linalg.norm(n.sigmas())**2 for (k, n) in
                     det_noise_new.items() if self.isDetFactor(k)
@@ -591,7 +542,7 @@ class PseudoLabeler(object):
         data = np.zeros((len(stamps), 8))
         for ii, stamp in enumerate(stamps):
             data[ii, 0] = stamp
-            data[ii, 1:] = self.gtsamPose32Tum(data_dict[stamp])
+            data[ii, 1:] = gtsamPose32Tum(data_dict[stamp])
         return data
 
     def labelOutliers(self, errors, det_std, chi2_thresh=0.95):
@@ -807,7 +758,7 @@ class PseudoLabeler(object):
         )
         # Plot ground truth camera trajectory if any
         if gt_cam:
-            gt_cam_dict = self.readTum(gt_cam)
+            gt_cam_dict = readTum(gt_cam)
             # Align origin
             pose_origin = gt_cam_dict[min(gt_cam_dict)]
             gt_cam_dict = {t: pose_origin.inverse() * p for (t, p)
@@ -944,8 +895,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--ycb_json", type=str, help="Path to the _ycb_original.json file",
-        default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
-        "/experiments/ycbv/_ycb_original.json"
+        default=root + "/experiments/ycbv/_ycb_original.json"
     )
     parser.add_argument(
         "--plot", "-p", action="store_true", help="Plot results?"
