@@ -4,6 +4,7 @@
 # Copyright 2022 The Ambitious Folks of the MRG
 
 import argparse
+import os
 
 import numpy as np
 from transforms3d.quaternions import quat2mat
@@ -84,16 +85,23 @@ class LabelEval:
 
 
 if __name__ == "__main__":
+    # Package root directory
+    root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     # Read command line args
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dim", "-d", type=float, nargs=3, help="Object dimension (x y z)",
+        "--dim", "-dim", type=float, nargs=3, help="Object dimension [x y z]",
         default=[10.1647, 8.3543, 5.7601]
     )
     parser.add_argument(
-        "--gt", type=str,
-        help="Ground truth object (relative) poses",
-        default="/home/ziqi/Desktop/0000.txt"
+        "--det", "-d", type=str, help="Recomputed object poses",
+        default=root + "/experiments/ycbv/pseudo_labels/003_cracker_box_16k" +
+        "/Inlier_1/0007_obj0.txt"
+    )
+    parser.add_argument(
+        "--gt", "-g", type=str, help="Ground truth object (relative) poses",
+        default=root + "/experiments/ycbv/dets/ground_truth" +
+        "/003_cracker_box_16k/0001_ycb_gt.txt"
     )
     parser.add_argument(
         "--intrinsics", "-in", type=float, nargs=5,
