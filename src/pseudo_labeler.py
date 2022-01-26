@@ -670,6 +670,11 @@ class PseudoLabeler(object):
                 print("Object %d keypoint location error (pixel): " % (ii))
                 print("    mean: %.2f; median: %.2f; std:  %.2f" %
                       (mean, median, std))
+            if save:
+                out_fname = self._det_fnames_[ii]
+                out_fname = out + out_fname[:-4] + \
+                    "_obj" + str(ii) + "_error" + out_fname[-4:]
+                np.savetxt(out_fname, [[mean, median, std]], fmt="%.2f")
 
     def error(self, out, gt_dets=None, verbose=False, save=False):
         """
