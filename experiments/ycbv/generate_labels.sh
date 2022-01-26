@@ -42,6 +42,10 @@ do
     # Optimize!
     python3 $pseudo_labeler --odom $odom --dets $det --out $out_folder \
     --obj ${obj:0:-4} --imgs "$ycb_folder/$seq/*-color.png" \
-    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 0 --optim 1 -j -l 10000 -m 1 \
+    --gt_cam $gt_cam --gt_obj $gt_obj --kernel 0 --optim 1 -j -l 100 -m 1 \
     --save
 done
+
+# Concatenate all the error files and rm them
+cat $out_folder/*_error.txt > $out_folder/error.txt
+rm $out_folder/*_error.txt
