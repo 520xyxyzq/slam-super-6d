@@ -5,10 +5,12 @@
 
 # Usage: generate_labels $1 object_name $2 out_folder
 obj=${1:-004_sugar_box_16k}
+# Where you store the DOPE det files relative to root/experiments/ycbv
+det_rel_path=${2:-dets/results/$obj}
 # Where you save the pseudo labels
-out_folder=${2:-~/Desktop/test}
+out_folder=${3:-~/Desktop/test}
 # Where you store the YCB-V data folder
-ycb_folder=${3:-/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data}
+ycb_folder=${4:-/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data}
 
 # TODO(ZQ): check whether out_folder is empty before execution
 # TODO(zq): fix path endings i.e. "/"
@@ -18,7 +20,7 @@ root=$(dirname $(dirname $(dirname $(realpath $0))))
 # Python script
 pseudo_labeler=$root/src/pseudo_labeler.py
 # Where you store the DOPE detection txt files
-det_folder=$(dirname $(realpath $0))/dets/results/$obj
+det_folder=$(dirname $(realpath $0))/$det_rel_path
 # Where you store the odometry txt files
 odom_folder=$(dirname $(realpath $0))/odom/results
 # Where you store the ground truth camera trajectory txt files
