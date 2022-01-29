@@ -497,7 +497,36 @@ class PseudoLabeler(object):
                     if stamp not in self._outliers_[ii]:
                         obj_dets[stamp] = self._dets_[ii][stamp]
                 elif mode == LabelingMode.Hybrid:
-                    pass
+                    # For hard examples, use SLAM result if cos_score > thresh
+                    if stamp not in self._dets_[ii] or \
+                            stamp in self._outliers_[ii]:
+                        score = self._pose_eval_.simScore(
+                            jj, rel_obj_pose, 0.8
+                        )
+                        if score:
+                            # if verbose:
+                            # print("Hard Example: Obj %d at stamp %.1f !!" %
+                            #      (ii, stamp))
+                            obj_dets[stamp] = rel_obj_pose
+                        continue
+                    # For inlier detections, use SLAM result if score higher
+                    else:
+                        score = self._pose_eval_.simScore(
+                            jj, rel_obj_pose, 0.8
+                        )
+                        score_in = self._pose_eval_.simScore(
+                            jj, self._dets_[ii][stamp], 0.3
+                        )
+                        # If max(score, score_inlier) < thresh, don't label
+                        if not score_in and not score:
+                            continue
+                        # Use inlier detection as pseudo label if
+                        # score < thresh < score_inlier
+                        # OR score_inlier > max(thresh, score)
+                        if score_in and (not score or score_in > score):
+                            obj_dets[stamp] = self._dets_[ii][stamp]
+                        else:
+                            obj_dets[stamp] = rel_obj_pose
                 elif mode == LabelingMode.PoseEval:
                     if stamp not in self._dets_[ii]:
                         continue
@@ -950,6 +979,7 @@ if __name__ == '__main__':
             obj_dim, intrinsics, target_folder, args.gt_obj,
             verbose=args.verbose, save=args.save
         )
+    # Uncomment to use EVO for error analysis (deprecated)
     # if pl._plabels_[0] and args.gt_obj:
     #     from evo_error import EvoError
 
