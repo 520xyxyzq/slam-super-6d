@@ -277,7 +277,7 @@ def objData2Dict(obj, ycb_json):
 # TODO(ziqi): add a global settings file and make fps a global param
 
 
-def main(obj, txt, ycb, ycb_json, out, new=False,
+def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
          intrinsics=[1066.778, 1067.487, 312.9869, 241.3109, 0],
          width=640, height=480, fps=10.0):
     """
@@ -287,6 +287,7 @@ def main(obj, txt, ycb, ycb_json, out, new=False,
     @param ycb: [str] path to ycb img folder
     @param ycb_json: [str] json file containing all ycb objects' data
     @param out: [str] target folder to save the training data
+    @param hard: [str] path to .txt file with hard examples' stamps
     @param new: [bool] Whether generate data for new DOPE training script
     @param intrinsics: [5 array] Camera intrinsics
     @param width: [int] img width
@@ -375,55 +376,52 @@ if __name__ == "__main__":
         "--obj", type=str, help="Object name", default="004_sugar_box_16k"
     )
     parser.add_argument(
-        "--ycb",
-        type=str,
-        help="Directory to YCB-V data folder",
+        "--ycb", type=str, help="Directory to YCB-V data folder",
         default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/",
     )
-    parser.add_argument("--seq", type=str,
-                        help="YCB sequence id", default="0000")
     parser.add_argument(
-        "--txt",
-        type=str,
-        help="Directory to txt (tum format) containing" +
-        "relative object poses",
-        default="/home/ziqi/Desktop/0000.txt",
+        "--seq", type=str, help="YCB sequence id", default="0000"
     )
     parser.add_argument(
-        "--out",
-        type=str,
-        help="Directory to save the imgs and labels",
-        default="/home/ziqi/Desktop/test",
+        "--txt", type=str, default="/home/ziqi/Desktop/0000.txt",
+        help="Directory to txt (tum format) containing" +
+        "relative object poses",
+    )
+    parser.add_argument(
+        "--out", type=str, default="/home/ziqi/Desktop/test",
+        help="Directory to save the imgs and labels"
+    )
+    parser.add_argument(
+        "--hard", help="Path to hard example txt file", default=None
     )
     # NOTE: DOPE released a new training script in Dec. 2021
     # It uses slightly different data format
     parser.add_argument(
-        "--new", "-n",
-        help="Is this for new DOPE training script?",
-        dest='new', action='store_true'
+        "--new", "-n", dest='new', action='store_true',
+        help="Is this for new DOPE training script?"
     )
     parser.set_defaults(new=False)
     # NOTE: There should be no need to modify the following params
     parser.add_argument(
-        "--ycb_json",
-        type=str,
-        help="Path to the _ycb_original.json file",
+        "--ycb_json", type=str, help="Path to the _ycb_original.json file",
         default=os.path.dirname(os.path.realpath(__file__)) +
         "/_ycb_original.json"
     )
     parser.add_argument(
-        "--img",
-        type=str,
-        help="Training image name (with extension)",
+        "--img", type=str, help="Training image name (with extension)",
         default="*-color.png",
     )
-    parser.add_argument("--intrinsics", type=float, nargs=5,
-                        help="Camera intrinsics: fx, fy, cx, cy, s",
-                        default=[1066.778, 1067.487, 312.9869, 241.3109, 0])
-    parser.add_argument("--width", type=int,
-                        help="Camera image width", default=640)
-    parser.add_argument("--height", type=int,
-                        help="Camera image height", default=480)
+    parser.add_argument(
+        "--intrinsics", type=float, nargs=5,
+        help="Camera intrinsics: fx, fy, cx, cy, s",
+        default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
+    )
+    parser.add_argument(
+        "--width", type=int, help="Camera image width", default=640
+    )
+    parser.add_argument(
+        "--height", type=int, help="Camera image height", default=480
+    )
     parser.add_argument(
         "--fps", type=float, help="Sequence FPS", default=10.0
     )
@@ -446,6 +444,6 @@ if __name__ == "__main__":
 
     main(
         args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
-        new=args.new, intrinsics=intrinsics, width=args.width,
+        hard=args.hard, new=args.new, intrinsics=intrinsics, width=args.width,
         height=args.height, fps=args.fps
     )
