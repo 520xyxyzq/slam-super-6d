@@ -350,6 +350,49 @@ def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
         with open(json_file, "w+") as fp:
             json.dump(data_dict, fp, indent=4, sort_keys=False)
 
+    # Duplicate hard examples
+    if hard:
+        assert(os.path.isfile(hard)), "Error: %s not a file" % hard
+        hard_stamps = np.loadtxt(hard)
+        assert(len(hard_stamps.shape) == 1), \
+            "Error: %s shape must be (N,)" % hard
+        assert(set(hard_stamps).issubset(indices)), \
+            "Error: %s contains time stamps not in %s" % (hard, txt)
+
+        for ii, stamp in enumerate(hard_stamps):
+            # Get rel obj pose at this stamp
+            stamp_ind, = np.where(np.isclose(indices, stamp))
+            assert(len(stamp_ind) == 1), "Error: Duplicates in %s" % txt
+            trans = rel_trans[stamp_ind[0], :]
+            quat = rel_quat[stamp_ind[0], :]
+            # Index for image
+            ind = int(stamp * fps)
+            # Copy img to target folder and rename by index
+            copy_img(
+                img_fnames[ind], out + "{:06}".format(ind + 1) + "_hard.png"
+            )
+            # compute cuboid of object
+            cuboid = add_cuboid(trans, quat, dim, new)
+            # Intrinsics hard coded for YCB sequence
+            cuboid_proj = project_cuboid(cuboid, intrinsics)
+            # NOTE: Centroid is always object center for YCB objects
+            # But may need to change this for other objects
+            centroid = trans
+            # Project centroid to center using the same function
+            centroid_proj = project_cuboid(centroid.reshape(1, 3), intrinsics)
+            # Throw all the data into a dictionary
+            if new:
+                data_dict = data2DictNew(obj, trans, quat, cuboid, cuboid_proj)
+            else:
+                data_dict = data2Dict(
+                    obj, trans, quat, centroid, centroid_proj, cuboid,
+                    cuboid_proj
+                )
+            # Save dictionary to json file
+            json_file = out + "{:06}".format(ind + 1) + "_hard.json"
+            with open(json_file, "w+") as fp:
+                json.dump(data_dict, fp, indent=4, sort_keys=False)
+
     # Save camera data into _camera_settings.json
     cam_dict = camData2Dict(intrinsics, width, height)
     cam_json_file = out + "_camera_settings.json"
@@ -363,9 +406,14 @@ def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
         json.dump(obj_dict, fp, indent=4, sort_keys=False)
 
     # Another sanity check
-    assert (
-        len(glob.glob(out + "*.png")) == rel_trans.shape[0]
-    ), "Error: #imgs must always == #poses, check target folder"
+    if hard:
+        assert(
+            len(glob.glob(out + "*.png")) == rel_trans.shape[0] +
+            hard_stamps.shape[0]
+        ), "Error: Error: #imgs must always == #poses, check target folder"
+    else:
+        assert (len(glob.glob(out + "*.png")) == rel_trans.shape[0]), \
+            "Error: #imgs must always == #poses, check target folder"
     print("Data Generation Finished!")
 
 
