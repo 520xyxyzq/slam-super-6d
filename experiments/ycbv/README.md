@@ -12,8 +12,10 @@ The automated process and results of running RGBD ORB-SLAM3 (in `odom`) and NVID
 `./ycb_orbslam.sh $path/to/test/folder $path/to/ycb-v/data $path/to/ORB_SLAM3`
 (This process could take ~6 hours)
 
-Note: We disabled ORBSLAM's loop closing module following the instructions of this
+- Note: We disabled ORBSLAM's loop closing module following the instructions of this
 [issue](https://github.com/raulmur/ORB_SLAM2/issues/256)
+
+- Note: The ORB-SLAM family has a repeatability [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/71)
 
 - Run NVIDIA DOPE on YCB videos
 `./ycb_dope.sh $path/to/test/folder $path/to/dope/folder`
