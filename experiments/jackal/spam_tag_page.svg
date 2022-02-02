@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="8.5in"
+   height="11in"
+   viewBox="0 0 215.9 279.4"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
+   sodipodi:docname="spam_tag_page.svg">
+  <defs
+     id="defs2">
+    <clipPath
+       id="clipPath879"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         inkscape:connector-curvature="0"
+         id="path877"
+         d="M 0,0 H 800 V 800 H 0 Z" />
+    </clipPath>
+    <clipPath
+       id="clipPath950"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         inkscape:connector-curvature="0"
+         id="path948"
+         d="M 0,0 H 800 V 800 H 0 Z" />
+    </clipPath>
+    <clipPath
+       id="clipPath1045"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1043"
+         d="M 0,0 H 800 V 800 H 0 Z" />
+    </clipPath>
+    <clipPath
+       id="clipPath1122"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1120"
+         d="M 0,0 H 800 V 800 H 0 Z" />
+    </clipPath>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.70710678"
+     inkscape:cx="66.49028"
+     inkscape:cy="589.2502"
+     inkscape:document-units="mm"
+     inkscape:current-layer="g867"
+     showgrid="false"
+     units="in"
+     inkscape:window-width="1920"
+     inkscape:window-height="1052"
+     inkscape:window-x="1920"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:measure-start="778.205,37.7953"
+     inkscape:measure-end="816,37.7953" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-17.6)">
+    <g
+       transform="matrix(0.35277777,0,0,-0.35277777,-2.1183249,214.95822)"
+       inkscape:label="apriltags1-20"
+       id="g867">
+      <g
+         id="g873"
+         transform="matrix(0.2214567,0,0,0.2214567,16.634622,-221.92946)">
+        <g
+           clip-path="url(#clipPath879)"
+           id="g875">
+          <g
+             transform="scale(0.1)"
+             id="g881">
+            <path
+               inkscape:connector-curvature="0"
+               id="path883"
+               style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 800,4000 V 800 H 4000 7200 V 4000 7200 H 4000 800 Z m 2400,2000 v -400 h 400 400 v 400 400 h 400 400 v -800 -800 h -400 -400 v -800 -800 h 800 800 v -400 -400 h -400 -400 v -400 -400 h -400 -400 v 800 800 h -400 -400 v -400 -400 h -400 -400 v 400 400 h -400 -400 v 400 400 h 400 400 v 800 800 h -400 -400 v 400 400 h 800 800 z m 3200,-400 v -800 h -400 -400 v 800 800 h 400 400 z" />
+            <path
+               inkscape:connector-curvature="0"
+               id="path885"
+               style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="m 2400,3600 v -400 h 400 400 v 400 400 h -400 -400 z" />
+          </g>
+        </g>
+      </g>
+      <g
+         id="g944"
+         transform="matrix(0.2214567,0,0,0.22145672,430.20943,-221.92947)">
+        <g
+           id="g946"
+           clip-path="url(#clipPath950)">
+          <g
+             id="g952"
+             transform="scale(0.1)">
+            <path
+               d="M 800,4000 V 800 H 4000 7200 V 4000 7200 H 4000 800 Z m 2400,1600 v -800 h 400 400 v 800 800 h 800 800 v -400 -400 h 400 400 v -400 -400 h -800 -800 v -400 -400 h -400 -400 v -400 -400 h 400 400 v -400 -400 h -400 -400 v -400 -400 h -400 -400 v 800 800 h -400 -400 v -400 -400 h -400 -400 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 800 800 z M 6400,2400 v -800 h -400 -400 v 800 800 h 400 400 z"
+               style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path954"
+               inkscape:connector-curvature="0" />
+            <path
+               inkscape:connector-curvature="0"
+               id="path1016"
+               style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 800,4000 V 800 H 4000 7200 V 4000 7200 H 4000 800 Z m 2400,1600 v -800 h 400 400 v 800 800 h 800 800 v -400 -400 h 400 400 v -400 -400 h -800 -800 v -400 -400 h -400 -400 v -400 -400 h 400 400 v -400 -400 h -400 -400 v -400 -400 h -400 -400 v 800 800 h -400 -400 v -400 -400 h -400 -400 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 800 800 z M 6400,2400 v -800 h -400 -400 v 800 800 h 400 400 z" />
+          </g>
+        </g>
+      </g>
+      <g
+         id="g1112"
+         transform="matrix(0.2214567,0,0,0.2214567,430.20942,74.857942)">
+        <g
+           id="g1114">
+          <g
+             id="g1116">
+            <g
+               id="g1118"
+               clip-path="url(#clipPath1122)">
+              <g
+                 id="g1124"
+                 transform="scale(0.1)">
+                <path
+                   d="M 800,4000 V 800 H 4000 7200 V 4000 7200 H 4000 800 Z m 3200,2000 v -400 h 800 800 v 400 400 h 400 400 V 4800 3200 h -400 -400 v -400 -400 h -400 -400 v 400 400 h 400 400 v 400 400 h -800 -800 v -400 -400 h -400 -400 v -400 -400 h 400 400 v -400 -400 h -800 -800 v 400 400 h -400 -400 v 1200 1200 h 400 400 v -800 -800 h 400 400 v 400 400 h 400 400 v 800 800 H 2800 1600 v 400 400 h 1200 1200 z"
+                   style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                   id="path1126"
+                   inkscape:connector-curvature="0" />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <image
+         transform="scale(1,-1)"
+         width="141.73228"
+         height="141.73228"
+         preserveAspectRatio="none"
+         xlink:href="data:image/png;base64,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 "
+         id="image920"
+         x="34.351158"
+         y="-531.09418" />
+      <g
+         id="g1035"
+         transform="matrix(0.2214567,0,0,0.2214567,16.634622,74.857948)">
+        <g
+           id="g1037">
+          <g
+             id="g1039">
+            <g
+               id="g1041"
+               clip-path="url(#clipPath1045)">
+              <g
+                 id="g1047"
+                 transform="scale(0.1)">
+                <path
+                   d="M 800,4000 V 800 H 4000 7200 V 4000 7200 H 4000 800 Z m 2400,1600 v -800 h -400 -400 v -400 -400 h -400 -400 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 800 800 z m 3200,400 v -400 h -400 -400 v -400 -400 h -400 -400 v 400 400 h -400 -400 v 400 400 H 5200 6400 Z M 4000,3600 v -400 h 400 400 v -400 -400 h 400 400 V 2000 1600 H 4400 3200 v 400 400 h 400 400 v 400 400 h -400 -400 v 400 400 h 400 400 z m 2400,0 v -400 h -400 -400 v 400 400 h 400 400 z"
+                   style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                   id="path1049"
+                   inkscape:connector-curvature="0" />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <image
+         transform="scale(1,-1)"
+         width="141.73228"
+         height="141.73228"
+         preserveAspectRatio="none"
+         xlink:href="data:image/png;base64,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 "
+         id="image942"
+         x="447.92596"
+         y="-531.09418" />
+      <rect
+         style="opacity:1;fill:none;fill-opacity:0.5254902;stroke:#000000;stroke-width:3.25157785;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:19.5094677, 3.25157794;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect1179"
+         width="160.02686"
+         height="284.88165"
+         x="231.99129"
+         y="-305.88144"
+         transform="scale(1,-1)" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="250.5047"
+         y="-47.565628"
+         id="text975"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan973"
+           x="250.5047"
+           y="-47.565628"
+           style="stroke-width:0.75">0</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="363.99533"
+         y="-47.565628"
+         id="text983"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan981"
+           x="363.99533"
+           y="-47.565628"
+           style="stroke-width:0.75">1</tspan></text>
+      <text
+         transform="scale(1,-1)"
+         id="text987"
+         y="-158.56563"
+         x="250.5047"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         xml:space="preserve"><tspan
+           style="stroke-width:0.75"
+           y="-158.56563"
+           x="250.5047"
+           id="tspan985"
+           sodipodi:role="line">2</tspan></text>
+      <text
+         transform="scale(1,-1)"
+         id="text991"
+         y="-158.56563"
+         x="363.99533"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         xml:space="preserve"><tspan
+           style="stroke-width:0.75"
+           y="-158.56563"
+           x="363.99533"
+           id="tspan989"
+           sodipodi:role="line">3</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="250.5047"
+         y="-278.95056"
+         id="text995"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan993"
+           x="250.5047"
+           y="-278.95056"
+           style="stroke-width:0.75">4</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="363.99533"
+         y="-278.95056"
+         id="text999"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan997"
+           x="363.99533"
+           y="-278.95056"
+           style="stroke-width:0.75">5</tspan></text>
+      <path
+         style="fill:none;stroke:#0000ff;stroke-width:2.83464573;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+         d="m 311.62971,162.69063 h -32.625"
+         id="path1018"
+         inkscape:connector-curvature="0" />
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:2.83464573;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+         d="m 311.62971,162.69063 v 61.875"
+         id="path1020"
+         inkscape:connector-curvature="0" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="318.36914"
+         y="-226.17615"
+         id="text1024"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan1022"
+           x="318.36914"
+           y="-226.17615"
+           style="stroke-width:0.75">x</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="274.88208"
+         y="-148.74797"
+         id="text1028"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan1026"
+           x="274.88208"
+           y="-148.74797"
+           style="stroke-width:0.75">z</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;line-height:0;font-family:'TeX Gyre Termes Math';-inkscape-font-specification:'TeX Gyre Termes Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.75"
+         x="293.44363"
+         y="-51.69754"
+         id="text872"
+         transform="scale(1,-1)"><tspan
+           sodipodi:role="line"
+           id="tspan870"
+           x="293.44363"
+           y="-51.69754"
+           style="stroke-width:0.75">SPAM</tspan></text>
+    </g>
+  </g>
+</svg>
