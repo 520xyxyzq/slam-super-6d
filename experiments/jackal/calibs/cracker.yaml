@@ -1,0 +1,89 @@
+label: "run2"
+id: 412eab8e4058621f7036b5e765dfe812
+cameras:
+- camera:
+    label: cam0
+    id: 54812562fa109c40fe90b29a59dd7798
+    line-delay-nanoseconds: 0
+    image_height: 376
+    image_width: 672
+    type: pinhole
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [276.32251, 276.32251, 353.70087, 179.08852]
+    distortion:
+      type: radial-tangential  
+      parameters:
+        cols: 1
+        rows: 4
+        data: [0.0, 0.0, 0.0, 0.0]
+  T_B_C:
+    cols: 4
+    rows: 4
+    # data: [ 0., -1.,  0., 0.,
+    #     0.,  0.,  1., 0.,
+    #    -1., -0.,  0., 0.,
+    #    0., 0., 0., 1.]
+    # data: [0.0, -1.0, 0.0, 0.0,
+    #        0.0,  0.0, -1.0, 0.0,
+    #        1.0,  0.0,  0.0, 0.0,
+    #        0.0,  0.0,  0.0, 1.0]
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 0.0, 1.0]
+- camera:
+    label: cam1
+    id: 54812562fa109c40fe90b29a59dd7723
+    line-delay-nanoseconds: 0
+    image_height: 376
+    image_width: 672
+    type: pinhole
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [276.32251, 276.32251, 353.70087, 179.08852]
+    distortion:
+      type: radial-tangential  
+      parameters:
+        cols: 1
+        rows: 4
+        data: [0.0, 0.0, 0.0, 0.0]
+  T_B_C:
+    cols: 4
+    rows: 4
+    # data: [ 0., -1.,  0., 0.12,
+    #     0.,  0.,  1., 0.,
+    #    -1., -0.,  0., 0.,
+    #    0., 0., 0., 1.]
+    # data: [0.0, -1.0, 0.0, 0.12,
+    #        0.0,  0.0, -1.0, 0.0,
+    #        1.0,  0.0,  0., 0.0,
+    #        0.0, 0.0, 0., 1.0]
+    data: [1.0, 0.0, 0.0, 0.12,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0]
+
+# imu_params:
+#   delay_imu_cam: 0.0
+#   max_imu_delta_t: 0.01
+#   acc_max: 176.0
+#   omega_max: 17
+#   sigma_omega_c: 12.0e-4
+#   sigma_acc_c: 8.0e-3
+#   sigma_omega_bias_c: 0.03
+#   sigma_acc_bias_c: 0.1
+#   sigma_integration: 0.0
+#   g: 9.8082
+#   imu_rate: 800
+
+# imu_initialization:
+#   velocity: [0.0, 0, 0.0]
+#   omega_bias: [0.0, 0, 0.0]
+#   acc_bias: [0.0, 0.0, 0.0]
+#   velocity_sigma: 2.0
+#   omega_bias_sigma: 0.01
+#   acc_bias_sigma: 0.1
+
