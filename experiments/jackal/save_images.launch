@@ -1,0 +1,17 @@
+<launch>
+  <arg name="ycb_item" />
+  <arg name="number" />
+
+  <arg name="image_folder" value="003_cracker_box_16k" if="$(eval ycb_item=='cracker')" />
+  <arg name="image_folder" value="004_sugar_box_16k" if="$(eval ycb_item=='sugar')" />
+  <arg name="image_folder" value="010_potted_meat_can_16k" if="$(eval ycb_item=='spam')" />
+
+  <node name="image_saver_left" pkg="image_view" type="image_saver" respawn="false" required="true" output="screen" args="'_filename_format:=$(dirname)/003_cracker_box_16k/00$(arg number)/left/%05i.png' _image_transport:=compressed" >
+    <remap from="image" to="/zed2/zed_node/left/image_rect_color"/>
+  </node>
+
+  <node name="image_saver_right" pkg="image_view" type="image_saver" respawn="false" required="true" output="screen" args="'_filename_format:=$(dirname)/$(arg image_folder)/00$(arg number)/right/%05i.png' _image_transport:=compressed" >
+    <remap from="image" to="/zed2/zed_node/right/image_rect_color"/>
+  </node>
+
+</launch>

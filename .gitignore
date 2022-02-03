@@ -1,4 +1,7 @@
 build/
+**/bags
+**/left
+**/right
 .vscode/
 *.pth
 *.so
