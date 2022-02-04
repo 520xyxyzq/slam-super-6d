@@ -105,6 +105,9 @@ def read_poses(txt):
     @return rel_quat: [Nx4 array] qx,qy,qz,qw
     """
     rel_poses = np.loadtxt(txt)
+    # Guard against one line case
+    if len(rel_poses.shape) == 1:
+        rel_poses = rel_poses.reshape(1, rel_poses.shape[0])
     # Skip lines with invalid quaternions
     ind = []
     for ii in range(rel_poses.shape[0]):
