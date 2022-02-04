@@ -3,11 +3,10 @@
 
   <arg name="ycb_item" />
   <arg name="number" />
-  <arg name="log" default="true" />
+  <arg name="log" default="1" />
 
   <!-- <arg name="calib_file" default="$(find svo_ros)/param/calib/run2.yaml"/>   -->
-  <arg name="calib_file" default="$(dirname)/calibs/cracker.yaml"/>  
-
+  <arg name="calib_file" default="$(find jackal_ros)/calibs/cracker.yaml"/>  
 
   <!-- Uncompress images and convert into greyscale -->
   <node pkg="image_transport" type="republish" name="image_republisher0" required="true" args="compressed in:=/zed2/zed_node/left/image_rect_color raw out:=/image0/uncompressed _image_transport:=compressed" />
@@ -16,9 +15,9 @@
   <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale0" required="true" args="/image0/uncompressed /gray_image0" />
   <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale1" required="true" args="/image1/uncompressed /gray_image1" />
 
-  <group if="$(eval log=='true')">
+  <group if="$(eval log=='1')">
     <!-- Logger node -->
-    <node pkg="svo_ros" type="log_poses.py" name="pose_logger" />
+    <node pkg="jackal_ros" type="log_poses.py" name="pose_logger" />
   </group>
 
   <!-- SVO node -->
@@ -32,7 +31,7 @@
     <param name="calib_file" value="$(arg calib_file)" />
 
     <!--Parameters-->
-    <rosparam file="$(dirname)/calibs/pinhole_stereo.yaml" />
+    <rosparam file="$(find jackal_ros)/calibs/pinhole_stereo.yaml" />
     <param name="map_scale" value="1" />
 
     <!-- Loop closure detection parameters -->
@@ -43,6 +42,5 @@
   <!-- RVIZ + SVO GUI -->
   <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" />
   <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
-
 
 </launch>

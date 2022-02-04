@@ -1,2 +1,7 @@
 digraph G {
-"no tf data recieved"}
+"world" -> "vicon/ZED2_ZQ/ZED2_ZQ"[label="Broadcaster: /transform_to_TF_node\nAverage rate: 100.204 Hz\nMost recent transform: 1643749217.760 ( 243122.585 sec old)\nBuffer length: 4.950 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1643992340.346"[ shape=plaintext ] ;
+ }->"world";
+}
