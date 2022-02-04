@@ -3,7 +3,6 @@
 
   <arg name="ycb_item" />
   <arg name="number" />
-  <arg name="log" default="1" />
 
   <!-- <arg name="calib_file" default="$(find svo_ros)/param/calib/run2.yaml"/>   -->
   <arg name="calib_file" default="$(find jackal_ros)/calibs/cracker.yaml"/>  
@@ -15,10 +14,8 @@
   <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale0" required="true" args="/image0/uncompressed /gray_image0" />
   <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale1" required="true" args="/image1/uncompressed /gray_image1" />
 
-  <group if="$(eval log=='1')">
-    <!-- Logger node -->
-    <node pkg="jackal_ros" type="log_poses.py" name="pose_logger" />
-  </group>
+  <!-- Logger node -->
+  <node pkg="jackal_ros" type="log_poses.py" name="pose_logger" />
 
   <!-- SVO node -->
   <node pkg="svo_ros" type="svo_node" name="svo" clear_params="true" output="screen" >
@@ -42,5 +39,7 @@
   <!-- RVIZ + SVO GUI -->
   <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" />
   <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
+
+<param name="/use_sim_time" value="true" type="bool" />
 
 </launch>

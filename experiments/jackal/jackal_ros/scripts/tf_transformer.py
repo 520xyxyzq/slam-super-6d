@@ -15,6 +15,8 @@ class TFconverter:
         self.sub_msg = rospy.Subscriber("/vicon/ZED2_ZQ/ZED2_ZQ", TransformStamped, self.my_callback)
         self.sub_msg2 = rospy.Subscriber("/vicon/markers", Markers, self.my_callback2)
         self.pub_markers = rospy.Publisher("/vicon/markers_world", Marker, queue_size=1)
+        self.pub_markers_text = rospy.Publisher("/vicon/markers_world/text", Marker, queue_size=1)
+
 
     def my_callback(self, data):
         # self.pub_tf.publish(TFMessage([data]))  # works but no 'nicely readable'
@@ -26,10 +28,7 @@ class TFconverter:
         self.pub_tf.publish(tf_msg)
 
     def my_callback2(self, data):
-        # self.pub_tf.publish(TFMessage([data]))  # works but no 'nicely readable'
 
-        # clearer
-        # data.header.frame_id = "world" # Hack to make it visualizable
         marker_msg = Marker()
         marker_msg.header = data.header
         marker_msg.header.frame_id = "world"
@@ -44,6 +43,10 @@ class TFconverter:
             point.y /= 1000
             point.z /= 1000
             marker_msg.points.append(point)
+
+            marker_text_msg = Marker()
+            marker_text_msg 
+            
 
         marker_msg.type = Marker.SPHERE_LIST
         color = ColorRGBA()

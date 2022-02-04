@@ -172,7 +172,7 @@ def parse_gt(gt_bag_path, t0):
             prev_T = transorm_msg2T(msg.transform)
             T0 = prev_T.copy()
             # Define first transform as identity
-            gts.append(np.eye(4))
+            gts.append(prev_T)
             continue
         
         T = transorm_msg2T(msg.transform)
@@ -181,10 +181,10 @@ def parse_gt(gt_bag_path, t0):
         rel_T_cam = T_cv.dot(rel_T_gt).dot(T_cv_inv)
 
         # Take previous transform and append relative transform to get new "absolute transform" relative camera frame
-        new_T = gts[k-1].dot(rel_T_cam)
+        new_T = T #gts[k-1].dot(rel_T_cam)
 
         gts.append(new_T)
-        ts.append(t - t0)
+        ts.append(t)
 
     gt_bag.close()
 
@@ -206,14 +206,15 @@ def write_Ts_ts_to_TUM(Ts, ts, filename="poses.txt"):
 if __name__ == "__main__":
     ycb_item, number, dirname = parse_inputs(sys.argv)
 
-    odom_bag_path = "{}/bags/ziqi/{}_{}.bag".format(dirname, ycb_item, number)
-    gt_bag_path = "{}/bags/odin/{}{}.bag".format(dirname, ycb_item, number)
+    # odom_bag_path = "{}/../../bags/ziqi/{}_{}.bag".format(dirname, ycb_item, number)
+    gt_bag_path = "{}/../../bags/odin/{}{}.bag".format(dirname, ycb_item, number)
 
-    print("looking at bag {}".format(odom_bag_path))
-    odoms, ts, t0 = parse_odom(odom_bag_path)
+    # print("looking at bag {}".format(odom_bag_path))
+    # odoms, ts, t0 = parse_odom(odom_bag_path) 
+    t0 = 0
 
     print("looking at bag {}".format(gt_bag_path))
     gts, ts_gt = parse_gt(gt_bag_path, t0)
 
-    write_Ts_ts_to_TUM(odoms, ts, "odom.txt")
-    write_Ts_ts_to_TUM(gts, ts_gt, "cam_gt.txt")
+    # write_Ts_ts_to_TUM(odoms, ts, "odom.txt")
+    write_Ts_ts_to_TUM(gts, ts_gt, "cam_gt_raw.txt")

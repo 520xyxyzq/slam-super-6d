@@ -13,7 +13,7 @@ class Logger(object):
         self.data = []
 
     def pose_cb(self, pose_msg):
-        timestamp = pose_msg.header.stamp.secs
+        timestamp = pose_msg.header.stamp.to_sec()
 
         x = pose_msg.pose.position.x
         y = pose_msg.pose.position.y
@@ -41,5 +41,6 @@ if __name__ == '__main__':
         pass
 
     jackal_path = rospkg.RosPack().get_path('jackal_ros')
-    rospy.loginfo("Logging to " + jackal_path + "/../log")
-    logger.save_to_file(jackal_path + "/../log")
+    log_path = jackal_path + "/../logs"
+    rospy.loginfo("Logging to " + log_path)
+    logger.save_to_file(log_path)
