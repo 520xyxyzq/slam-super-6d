@@ -514,6 +514,7 @@ class PseudoLabeler(object):
         @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
         """
         self._plabels_ = []
+        self.hybrid_count = 0
         # For each object
         for ii in range(len(self._dets_)):
             lm_pose = self._result_.atPose3(L(ii))
@@ -566,6 +567,7 @@ class PseudoLabeler(object):
                             obj_dets[stamp] = self._dets_[ii][stamp]
                         else:
                             obj_dets[stamp] = rel_obj_pose
+                            self.hybrid_count += 1
                 elif mode == LabelingMode.PoseEval:
                     if stamp not in self._dets_[ii]:
                         continue
@@ -703,6 +705,15 @@ class PseudoLabeler(object):
                     out + out_fname[:-4] + "_obj" + str(ii) + "_hard" +
                     out_fname[-4:], hard_egs, fmt="%.1f"
                 )
+                if mode == LabelingMode.Hybrid:
+                    # TODO: what if out_fname[:4] is not integar?
+                    np.savetxt(
+                        out + out_fname[:-4] + "_obj" + str(ii) + "_stats" +
+                        out_fname[-4:],
+                        [[int(out_fname[:4]), ii,
+                          len(plabel) - hard_egs.shape[0] - self.hybrid_count,
+                          self.hybrid_count, hard_egs.shape[0]]], fmt="%d"
+                    )
                 if verbose:
                     print("Data saved to %s!" % out)
             else:
