@@ -2,7 +2,7 @@
 
 from scipy.spatial.transform import Rotation as Rot
 
-from evo.core import trajectory
+from evo.core import trajectory, sync
 from evo.tools import plot, file_interface, log
 
 import numpy as np
@@ -54,19 +54,33 @@ def write_Ts_ts_to_TUM(Ts, ts, filename="poses.txt"):
     np.savetxt(filename, tum_lines)
 
 if __name__ == "__main__":
-    odom_data = "./odom_raw_bak.txt" # SVO odom
+    odom_data = "./logs/odom_raw.txt" # SVO odom
     gt_data = "./cam_gt_raw.txt"
 
     odom_traj = file_interface.read_tum_trajectory_file(odom_data)
     gt_traj = file_interface.read_tum_trajectory_file(gt_data)
 
+    t_max_diff = 0.01
+
     # print(dir(gt_traj))
 
-    R, t, scale = gt_traj.align(odom_traj, n=-1)
+    # We align Vicon to odom since odom is already in camera frame
+    odom_traj, gt_traj = sync.associate_trajectories(
+        odom_traj, gt_traj, max_diff=t_max_diff,
+        first_name="odom", snd_name="ref")
 
-    rot = Rot.from_dcm(R).as_euler('xyz')
+    t0 = odom_traj.timestamps[0]
+    odom_traj.timestamps = odom_traj.timestamps - t0
+    gt_traj.timestamps = gt_traj.timestamps - t0
+    print(len(odom_traj.timestamps))
+    print(odom_traj.timestamps[:5])
+    print(gt_traj.timestamps[:5])
 
-    print("Rotation: {}\n translation: {}".format(rot, t))
+    R, t, scale = gt_traj.align(odom_traj, n=-1, correct_scale=True)
+
+    rot = Rot.from_matrix(R).as_euler('XYZ')
+
+    print("Rotation: {}\n translation: {}\n scale: {}".format(rot*180/np.pi, t, scale))
 
     # write_Ts_ts_to_TUM(odoms, ts, "odom.txt")
     # write_Ts_ts_to_TUM(gts, ts_gt, "cam_gt.txt")

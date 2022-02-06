@@ -152,14 +152,14 @@ def parse_gt(gt_bag_path, t0):
     ts = []
     gts = []
 
-    T_cv = compute_vicon2cam()
-    T_cv_inv = invT(T_cv)
+    # T_cv = compute_vicon2cam()
+    # T_cv_inv = invT(T_cv)
 
     # for _, msg, t in gt_bag.read_messages(topics=['/vicon/ZED2_ZQ/ZED2_ZQ']):
     #     t = t.to_sec()
     #     T = 
     #     pass
-        
+
     #     ts.append(t - t0)
 
     # gt_bag.close()
@@ -170,15 +170,14 @@ def parse_gt(gt_bag_path, t0):
         if k == 0:
             # Initialize previous transform to compute relative transforms
             prev_T = transorm_msg2T(msg.transform)
-            T0 = prev_T.copy()
             # Define first transform as identity
             gts.append(prev_T)
             continue
         
         T = transorm_msg2T(msg.transform)
-        rel_T_gt = invT(prev_T).dot(T)
-        prev_T = T
-        rel_T_cam = T_cv.dot(rel_T_gt).dot(T_cv_inv)
+        # rel_T_gt = invT(prev_T).dot(T)
+        # prev_T = T
+        # rel_T_cam = T_cv.dot(rel_T_gt).dot(T_cv_inv)
 
         # Take previous transform and append relative transform to get new "absolute transform" relative camera frame
         new_T = T #gts[k-1].dot(rel_T_cam)

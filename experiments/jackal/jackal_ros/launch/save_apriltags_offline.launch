@@ -1,0 +1,34 @@
+<launch>
+
+  <arg name="launch_prefix" default="" /> <!--set to value="gdbserver localhost:10000" for remote debugging-->
+  <arg name="node_namespace" default="apriltag_ros_single_image_client_node" />
+
+  <arg name="ycb_item" />
+  <arg name="number" />
+
+  <arg name="image_folder" value="003_cracker_box_16k" if="$(eval ycb_item=='cracker')" />
+  <arg name="image_folder" value="004_sugar_box_16k" if="$(eval ycb_item=='sugar')" />
+  <arg name="image_folder" value="010_potted_meat_can_16k" if="$(eval ycb_item=='spam')" />
+
+
+  <arg name="image_load_path" value="$(find jackal_ros)/../$(arg image_folder)/00$(arg number)/left" /> <!-- Where to load image for analysis from -->
+  <arg name="image_save_path" value="$(find jackal_ros)/../$(arg image_folder)/00$(arg number)/left/apriltag_detections" /> <!-- Where to save tag detections image -->
+
+  <!-- Set parameters -->
+  <rosparam command="load" file="$(find apriltag_ros)/config/settings.yaml" ns="$(arg node_namespace)" />
+  <rosparam command="load" file="$(find apriltag_ros)/config/tags.yaml" ns="$(arg node_namespace)" />
+
+  <node pkg="apriltag_ros" type="apriltag_ros_single_image_client_node" name="$(arg node_namespace)" clear_params="true" output="screen" launch-prefix="$(arg launch_prefix)" >
+
+    <param name="image_load_path" type="str" value="$(arg image_load_path)" />
+    <param name="image_save_path" type="str" value="$(arg image_save_path)" />
+
+    <!-- Camera intrinsic parameters -->
+    <param name="fx" type="double" value="276.32251" />
+    <param name="fy" type="double" value="276.32251" />
+    <param name="cx" type="double" value="353.70087" />
+    <param name="cy" type="double" value="179.08852" />
+
+  </node>
+
+</launch>
