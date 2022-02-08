@@ -3,8 +3,10 @@ clearvars
 
 % inputs
 opt = globals();
-root_dir = '/data/SelfObjectPose/Work/slam-super-6d';
+root_dir = '/data/SelfObjectPose/Work/slam-super-6d'; % slam-super-6d dir
 result_dir = horzcat(root_dir, '/evaluation/Results');
+% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt/';
+% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/dets/ground_truth/003_cracker_box_16k/';
 test_cls_idx = 2; % 1-indexed (e.g. 2 = cracker box)
 
 % read dope2ycb fixed transformation
@@ -24,13 +26,18 @@ for s = 1:numel(all_seqs)
     seq_file = horzcat(all_seqs(s).folder, '/', all_seqs(s).name);
     content = readmatrix(seq_file);
     [~,all_seqs(s).seq_id,~] = fileparts(all_seqs(s).name);
+    all_seqs(s).seq_id = all_seqs(s).seq_id(1:4); % in case redundancy appended
     all_seqs(s).frame_ids = arrayfun(@(id) sprintf('%06d', id), ...
         content(:,1) * 10 + 1, 'UniformOutput', false); % cell (n,1)
+    all_seqs(s).miss_detections = arrayfun(@(row) check_miss_detection(content(row, 2:8)), ...
+        (1:size(content,1)))'; % (n,1) logical in {0,1} transpose makes vertical
     all_seqs(s).translations = arrayfun(@(row) content(row, 2:4)', ...
         (1:size(content,1))', 'UniformOutput', false); % cell (n,1) (3,1)
     all_seqs(s).rotations = arrayfun(@(row) quat2rotm(horzcat(content(row,8), ...
-        content(row, 5:7))) * dope2ycb_trsfm, 1:size(content,1), ...
+        content(row, 5:7))) * dope2ycb_trsfm, (1:size(content,1))', ...
         'UniformOutput', false); % cell (n,1) (3,3) quat(xyzw)->quat(wxyz) in matlab
+%     all_seqs(s).poses = arrayfun(@(row)  vertcat(horzcat(quat2rotm(horzcat(content(row,8), content(row, 5:7))), content(row, 2:4)'), [0 0 0 1]) * dope2ycb_trsfm, ...
+%         1:size(content,1), 'UniformOutput', false); % cell (n,1) (4,4). Change 3 places
 end
 
 % read class names
@@ -78,11 +85,11 @@ for i = 1:numel(keyframes)
     
     % load gt
     filename = fullfile(opt.root, 'data', sprintf('%04d/%06d-meta.mat', seq_id, frame_id));
-    disp(filename);
     gt = load(filename);
     
     for j = 1:numel(gt.cls_indexes) % 1-indexed (see plot_accuracy_keyframe.m/L32
         if gt.cls_indexes(j) == test_cls_idx
+            disp(filename);
             count = count + 1;
             cls_index = gt.cls_indexes(j);
             results_seq_id(count) = seq_id;
@@ -96,21 +103,34 @@ for i = 1:numel(keyframes)
                     break;
                 end
             end
-            assert(strcmp(all_seqs(s).seq_id, seq_id_str));
+            %disp(all_seqs(s).seq_id)
+            %disp(seq_id_str)
+            assert(strcmp(all_seqs(s).seq_id, seq_id_str), ...
+                'possible cause: object appears in a seq in the ground-truth but that seq is not in results');
             frame_id = round(frame_id);
             assert(strcmp(all_seqs(s).frame_ids{frame_id}, frame_id_str));
             
-            % get poses
-            RT_gt = gt.poses(:,:,j);
-            RT = zeros(3, 4);
-            RT(1:3, 1:3) = all_seqs(s).rotations{frame_id};
-            RT(:, 4) = all_seqs(s).translations{frame_id};
-            
-            % evaluate
-            distances_sys(count, 1) = adi(RT, RT_gt, models{cls_index}');
-            distances_non(count, 1) = add(RT, RT_gt, models{cls_index}');
-            errors_rotation(count, 1) = re(RT(1:3, 1:3), RT_gt(1:3, 1:3));
-            errors_translation(count, 1) = te(RT(:, 4), RT_gt(:, 4));
+            % check miss detection
+            if all_seqs(s).miss_detections(frame_id)
+                fprintf('miss detection in seq %s fr %s\n', all_seqs(s).seq_id, all_seqs(s).frame_ids{frame_id}); 
+                distances_sys(count, 1) = inf;
+                distances_non(count, 1) = inf;
+                errors_rotation(count, 1) = inf;
+                errors_translation(count, 1) = inf;
+            else
+                % get poses
+                RT_gt = gt.poses(:,:,j);
+                RT = zeros(3, 4);
+                RT(1:3, 1:3) = all_seqs(s).rotations{frame_id};
+                RT(:, 4) = all_seqs(s).translations{frame_id};
+                % RT = all_seqs(s).poses{frame_id}(1:3, :);
+
+                % evaluate
+                distances_sys(count, 1) = adi(RT, RT_gt, models{cls_index}');
+                distances_non(count, 1) = add(RT, RT_gt, models{cls_index}');
+                errors_rotation(count, 1) = re(RT(1:3, 1:3), RT_gt(1:3, 1:3));
+                errors_translation(count, 1) = te(RT(:, 4), RT_gt(:, 4));
+            end
         end
     end
 end
@@ -125,6 +145,14 @@ results_object_id = results_object_id(1:count, :);
 results_cls_id = results_cls_id(1:count, :);
 save('results_keyframe.mat', 'distances_sys', 'distances_non', 'errors_rotation', 'errors_translation',...
     'results_seq_id', 'results_frame_id', 'results_object_id', 'results_cls_id');
+
+function is_miss_detection = check_miss_detection(input_row)
+if isequal(input_row, [0 0 0 0 0 0 0])
+    is_miss_detection = true;
+else
+    is_miss_detection = false;
+end
+end
 
 function pts_new = transform_pts_Rt(pts, RT)
 %     """
