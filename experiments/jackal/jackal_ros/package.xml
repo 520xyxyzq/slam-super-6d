@@ -57,6 +57,9 @@
   <build_depend>vicon_bridge</build_depend>
   <build_export_depend>vicon_bridge</build_export_depend>
   <exec_depend>vicon_bridge</exec_depend>
+    <build_depend>apriltag_ros</build_depend>
+  <build_export_depend>apriltag_ros</build_export_depend>
+  <exec_depend>apriltag_ros</exec_depend>
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rospy</build_depend>
   <build_export_depend>rospy</build_export_depend>

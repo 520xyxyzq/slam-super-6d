@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   message_generation
   vicon_bridge
+  apriltag_ros
   std_msgs
   sensor_msgs
 )
@@ -19,6 +20,7 @@ catkin_package(
 CATKIN_DEPENDS
 message_runtime
 vicon_bridge
+apriltag_ros
 std_msgs
 sensor_msgs
 )

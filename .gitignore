@@ -2,6 +2,7 @@ build/
 **/bags
 **/left
 **/right
+**/*.zip
 .vscode/
 *.pth
 *.so
