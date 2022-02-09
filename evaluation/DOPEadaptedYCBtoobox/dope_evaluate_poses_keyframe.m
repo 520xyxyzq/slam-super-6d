@@ -4,9 +4,10 @@ clearvars
 % inputs
 opt = globals();
 root_dir = '/data/SelfObjectPose/Work/slam-super-6d'; % slam-super-6d dir
-result_dir = horzcat(root_dir, '/evaluation/Results');
-% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt/';
-% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/dets/ground_truth/003_cracker_box_16k/';
+% result_dir = horzcat(root_dir, '/evaluation/Results');
+% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt';
+% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/dets/ground_truth/003_cracker_box_16k';
+result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/PoseEval_2';
 test_cls_idx = 2; % 1-indexed (e.g. 2 = cracker box)
 
 % read dope2ycb fixed transformation
