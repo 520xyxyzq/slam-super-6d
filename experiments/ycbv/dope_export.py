@@ -105,6 +105,9 @@ def read_poses(txt):
     @return rel_quat: [Nx4 array] qx,qy,qz,qw
     """
     rel_poses = np.loadtxt(txt)
+    # Guard against one line case
+    if len(rel_poses.shape) == 1:
+        rel_poses = rel_poses.reshape(1, rel_poses.shape[0])
     # Skip lines with invalid quaternions
     ind = []
     for ii in range(rel_poses.shape[0]):
@@ -277,7 +280,7 @@ def objData2Dict(obj, ycb_json):
 # TODO(ziqi): add a global settings file and make fps a global param
 
 
-def main(obj, txt, ycb, ycb_json, out, new=False,
+def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
          intrinsics=[1066.778, 1067.487, 312.9869, 241.3109, 0],
          width=640, height=480, fps=10.0):
     """
@@ -287,6 +290,7 @@ def main(obj, txt, ycb, ycb_json, out, new=False,
     @param ycb: [str] path to ycb img folder
     @param ycb_json: [str] json file containing all ycb objects' data
     @param out: [str] target folder to save the training data
+    @param hard: [str] path to .txt file with hard examples' stamps
     @param new: [bool] Whether generate data for new DOPE training script
     @param intrinsics: [5 array] Camera intrinsics
     @param width: [int] img width
@@ -349,6 +353,49 @@ def main(obj, txt, ycb, ycb_json, out, new=False,
         with open(json_file, "w+") as fp:
             json.dump(data_dict, fp, indent=4, sort_keys=False)
 
+    # Duplicate hard examples
+    if hard:
+        assert(os.path.isfile(hard)), "Error: %s not a file" % hard
+        hard_stamps = np.loadtxt(hard)
+        assert(len(hard_stamps.shape) == 1), \
+            "Error: %s shape must be (N,)" % hard
+        assert(set(hard_stamps).issubset(indices)), \
+            "Error: %s contains time stamps not in %s" % (hard, txt)
+
+        for ii, stamp in enumerate(hard_stamps):
+            # Get rel obj pose at this stamp
+            stamp_ind, = np.where(np.isclose(indices, stamp))
+            assert(len(stamp_ind) == 1), "Error: Duplicates in %s" % txt
+            trans = rel_trans[stamp_ind[0], :]
+            quat = rel_quat[stamp_ind[0], :]
+            # Index for image
+            ind = int(stamp * fps)
+            # Copy img to target folder and rename by index
+            copy_img(
+                img_fnames[ind], out + "{:06}".format(ind + 1) + "_hard.png"
+            )
+            # compute cuboid of object
+            cuboid = add_cuboid(trans, quat, dim, new)
+            # Intrinsics hard coded for YCB sequence
+            cuboid_proj = project_cuboid(cuboid, intrinsics)
+            # NOTE: Centroid is always object center for YCB objects
+            # But may need to change this for other objects
+            centroid = trans
+            # Project centroid to center using the same function
+            centroid_proj = project_cuboid(centroid.reshape(1, 3), intrinsics)
+            # Throw all the data into a dictionary
+            if new:
+                data_dict = data2DictNew(obj, trans, quat, cuboid, cuboid_proj)
+            else:
+                data_dict = data2Dict(
+                    obj, trans, quat, centroid, centroid_proj, cuboid,
+                    cuboid_proj
+                )
+            # Save dictionary to json file
+            json_file = out + "{:06}".format(ind + 1) + "_hard.json"
+            with open(json_file, "w+") as fp:
+                json.dump(data_dict, fp, indent=4, sort_keys=False)
+
     # Save camera data into _camera_settings.json
     cam_dict = camData2Dict(intrinsics, width, height)
     cam_json_file = out + "_camera_settings.json"
@@ -362,9 +409,14 @@ def main(obj, txt, ycb, ycb_json, out, new=False,
         json.dump(obj_dict, fp, indent=4, sort_keys=False)
 
     # Another sanity check
-    assert (
-        len(glob.glob(out + "*.png")) == rel_trans.shape[0]
-    ), "Error: #imgs must always == #poses, check target folder"
+    if hard:
+        assert(
+            len(glob.glob(out + "*.png")) == rel_trans.shape[0] +
+            hard_stamps.shape[0]
+        ), "Error: Error: #imgs must always == #poses, check target folder"
+    else:
+        assert (len(glob.glob(out + "*.png")) == rel_trans.shape[0]), \
+            "Error: #imgs must always == #poses, check target folder"
     print("Data Generation Finished!")
 
 
@@ -375,55 +427,52 @@ if __name__ == "__main__":
         "--obj", type=str, help="Object name", default="004_sugar_box_16k"
     )
     parser.add_argument(
-        "--ycb",
-        type=str,
-        help="Directory to YCB-V data folder",
+        "--ycb", type=str, help="Directory to YCB-V data folder",
         default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/",
     )
-    parser.add_argument("--seq", type=str,
-                        help="YCB sequence id", default="0000")
     parser.add_argument(
-        "--txt",
-        type=str,
-        help="Directory to txt (tum format) containing" +
-        "relative object poses",
-        default="/home/ziqi/Desktop/0000.txt",
+        "--seq", type=str, help="YCB sequence id", default="0000"
     )
     parser.add_argument(
-        "--out",
-        type=str,
-        help="Directory to save the imgs and labels",
-        default="/home/ziqi/Desktop/test",
+        "--txt", type=str, default="/home/ziqi/Desktop/0000.txt",
+        help="Directory to txt (tum format) containing" +
+        "relative object poses",
+    )
+    parser.add_argument(
+        "--out", type=str, default="/home/ziqi/Desktop/test",
+        help="Directory to save the imgs and labels"
+    )
+    parser.add_argument(
+        "--hard", help="Path to hard example txt file", default=None
     )
     # NOTE: DOPE released a new training script in Dec. 2021
     # It uses slightly different data format
     parser.add_argument(
-        "--new", "-n",
-        help="Is this for new DOPE training script?",
-        dest='new', action='store_true'
+        "--new", "-n", dest='new', action='store_true',
+        help="Is this for new DOPE training script?"
     )
     parser.set_defaults(new=False)
     # NOTE: There should be no need to modify the following params
     parser.add_argument(
-        "--ycb_json",
-        type=str,
-        help="Path to the _ycb_original.json file",
+        "--ycb_json", type=str, help="Path to the _ycb_original.json file",
         default=os.path.dirname(os.path.realpath(__file__)) +
         "/_ycb_original.json"
     )
     parser.add_argument(
-        "--img",
-        type=str,
-        help="Training image name (with extension)",
+        "--img", type=str, help="Training image name (with extension)",
         default="*-color.png",
     )
-    parser.add_argument("--intrinsics", type=float, nargs=5,
-                        help="Camera intrinsics: fx, fy, cx, cy, s",
-                        default=[1066.778, 1067.487, 312.9869, 241.3109, 0])
-    parser.add_argument("--width", type=int,
-                        help="Camera image width", default=640)
-    parser.add_argument("--height", type=int,
-                        help="Camera image height", default=480)
+    parser.add_argument(
+        "--intrinsics", type=float, nargs=5,
+        help="Camera intrinsics: fx, fy, cx, cy, s",
+        default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
+    )
+    parser.add_argument(
+        "--width", type=int, help="Camera image width", default=640
+    )
+    parser.add_argument(
+        "--height", type=int, help="Camera image height", default=480
+    )
     parser.add_argument(
         "--fps", type=float, help="Sequence FPS", default=10.0
     )
@@ -446,6 +495,6 @@ if __name__ == "__main__":
 
     main(
         args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
-        new=args.new, intrinsics=intrinsics, width=args.width,
+        hard=args.hard, new=args.new, intrinsics=intrinsics, width=args.width,
         height=args.height, fps=args.fps
     )

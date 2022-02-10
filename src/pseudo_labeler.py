@@ -31,6 +31,7 @@ class Kernel(IntEnum):
     Huber = 4
     Tukey = 5
     Welsch = 6
+    DCE = 7
 
 
 # NLS optimizers
@@ -191,6 +192,8 @@ class PseudoLabeler(object):
         elif kernel == Kernel.MaxMix:
             # TODO: add custom factor
             pass
+        elif kernel == Kernel.DCE:
+            pass
         elif kernel in [Kernel.Cauchy, Kernel.GemanMcClure, Kernel.Huber,
                         Kernel.Tukey, Kernel.Welsch]:
             if kernel == Kernel.Cauchy:
@@ -301,7 +304,7 @@ class PseudoLabeler(object):
         @param odom_noise: [1 or 6-array] Camera odom noise model
         @param det_noise: [1 or 6-array] INITIAL detection noise model
         @param kernel: [int] robust kernel to use in PGO
-        @param kernel_param: [float] robust kernel param (use default if None
+        @param kernel_param: [float] robust kernel param (use default if None)
         @param optimizer: [int] NLS optimizer for pose graph optimization
         @param lmd: [float] Regularization coefficient
         @param abs_tol: [float] absolute error threshold
@@ -328,17 +331,40 @@ class PseudoLabeler(object):
                 assert(hasattr(self, "_outliers_")), \
                     "Error: Outliers not labeled yet!"
                 # Regularization doesn't have outlier terms
-                # TODO: may want to use initial noise * outliers as regular
-                regular = (1/lmd)**4 * np.sum([
-                    np.linalg.norm(n.sigmas())**2 for (k, n) in
-                    det_noise_new.items() if self.isDetFactor(k)
-                    and self._stamps_[gtsam.Symbol(k[0]).index()] not in
-                    self._outliers_[gtsam.Symbol(k[1]).index()]
-                ])
+                if not kernel == Kernel.DCE:
+                    # TODO: may want to use initial noise * outliers as regular
+                    regular = (1/lmd)**4 * np.sum([
+                        np.linalg.norm(n.sigmas())**2 for (k, n) in
+                        det_noise_new.items() if self.isDetFactor(k)
+                        and self._stamps_[gtsam.Symbol(k[0]).index()] not in
+                        self._outliers_[gtsam.Symbol(k[1]).index()]
+                    ])
+                else:
+                    kernel_param = kernel_param if kernel_param else 0.1
+                    regular = np.sum([
+                        np.log(np.prod(n.sigmas()) / kernel_param**6)
+                        for (k, n) in det_noise_new.items()
+                        if self.isDetFactor(k)
+                    ])
             else:
                 n_edges = sum([len(det) for det in self._dets_])
-                regular = (1/lmd)**4 * n_edges * \
-                    np.linalg.norm(det_noise_new)**2
+                if not kernel == Kernel.DCE:
+                    # In case of isotropic det noise model
+                    noise_norm = np.sqrt(6) * np.linalg.norm(det_noise_new) \
+                        if len(det_noise_new) == 1 \
+                        else np.linalg.norm(det_noise_new)
+                    regular = (1/lmd)**4 * n_edges * noise_norm**2
+                else:
+                    kernel_param = kernel_param if kernel_param else 0.1
+                    # In case of isotropic det noise model
+                    if len(det_noise_new) == 1:
+                        regular = n_edges * np.log(
+                            det_noise_new[0]**6 / kernel_param**6
+                        )
+                    else:
+                        regular = n_edges * np.log(
+                            np.prod(det_noise_new) / kernel_param**6
+                        )
             error = self._fg_.error(self._result_) + regular
             rel_err = (prev_error - error) / prev_error
 
@@ -417,7 +443,7 @@ class PseudoLabeler(object):
         @param errors: [dict{tuple:array}] Factor unwhitened errors indexed by
         keys; Error order rpyxyz
         @param kernel: [int] robust kernel to use in PGO
-        @param kernel_param: [float] robust kernel param (use default if None
+        @param kernel_param: [float] robust kernel param (use default if None)
         @param lmd: [float] Regularization coefficient
         @return noise_models: [dict{tuple:array}] optimal noise model
         """
@@ -445,6 +471,19 @@ class PseudoLabeler(object):
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas(lmd * (e**2)**(1/4))
                  for (k, e) in errors.items() if self.isDetFactor(k)}
+        elif kernel == Kernel.DCE:
+            noise_models = {}
+            for (k, e) in errors.items():
+                if self.isDetFactor(k):
+                    stamp = self._stamps_[gtsam.Symbol(k[0]).index()]
+                    obj_id = gtsam.Symbol(k[1]).index()
+                    # Set the sigma value as error otherwise as sigma_min
+                    kernel_param = kernel_param if kernel_param else 0.1
+                    sigma_new = abs(e)
+                    sigma_new[sigma_new <= kernel_param] = kernel_param
+                    noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
+                        sigma_new
+                    )
         else:
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
@@ -475,6 +514,7 @@ class PseudoLabeler(object):
         @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
         """
         self._plabels_ = []
+        self.hybrid_count = 0
         # For each object
         for ii in range(len(self._dets_)):
             lm_pose = self._result_.atPose3(L(ii))
@@ -527,6 +567,7 @@ class PseudoLabeler(object):
                             obj_dets[stamp] = self._dets_[ii][stamp]
                         else:
                             obj_dets[stamp] = rel_obj_pose
+                            self.hybrid_count += 1
                 elif mode == LabelingMode.PoseEval:
                     if stamp not in self._dets_[ii]:
                         continue
@@ -664,6 +705,15 @@ class PseudoLabeler(object):
                     out + out_fname[:-4] + "_obj" + str(ii) + "_hard" +
                     out_fname[-4:], hard_egs, fmt="%.1f"
                 )
+                if mode == LabelingMode.Hybrid:
+                    # TODO: what if out_fname[:4] is not integar?
+                    np.savetxt(
+                        out + out_fname[:-4] + "_obj" + str(ii) + "_stats" +
+                        out_fname[-4:],
+                        [[int(out_fname[:4]), ii,
+                          len(plabel) - hard_egs.shape[0] - self.hybrid_count,
+                          self.hybrid_count, hard_egs.shape[0]]], fmt="%d"
+                    )
                 if verbose:
                     print("Data saved to %s!" % out)
             else:
