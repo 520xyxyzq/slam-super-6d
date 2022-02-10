@@ -3,7 +3,7 @@
 # Author: Ziqi Lu ziqilu@mit.edu
 # Copyright 2021 The Ambitious Folks of the MRG
 
-# Directory of the test folder 
+# Directory of the test folder
 # (where you store the python files, images, results, etc.)
 # Make sure the ORBSLAM yaml file is in the folder
 test_folder=${1:-~/Desktop/test}
@@ -30,15 +30,22 @@ do
     # Copy imgs into folders
     cp $ycb_folder/"$n"/*-color.png $test_folder/rgb/
     cp $ycb_folder/"$n"/*-depth.png $test_folder/depth/
-    
+
     # Make the depth, rgb and association files
     python3 $test_folder/ycb2orbslam.py \
     --ycb $ycb_folder --seq "$n" --out "$test_folder"
 
+    # YCB uses different camera models before and after seq 60
+    if (($n<60))
+        then config_file=$test_folder/YCB.yaml
+    else
+        config_file=$test_folder/YCB2.yaml
+    fi
+
     # Run ORB-SLAM
     $orbslam_folder/Examples/RGB-D/rgbd_tum \
     $orbslam_folder/Vocabulary/ORBvoc.txt \
-    $test_folder/YCB.yaml \
+    $config_file \
     $test_folder $test_folder/association.txt
 
     # Rename the camera traj as seq number
