@@ -1,0 +1,62 @@
+<launch>
+
+  <arg name="ycb_item" />
+  <arg name="number" />
+
+  <rosparam param="ycb_item" subst_value="True">$(arg ycb_item)</rosparam>
+  <rosparam param="number" subst_value="True">$(arg number)</rosparam>
+
+
+  <arg name="image_folder" value="003_cracker_box_16k" if="$(eval ycb_item=='cracker')" />
+  <arg name="image_folder" value="004_sugar_box_16k" if="$(eval ycb_item=='sugar')" />
+  <arg name="image_folder" value="010_potted_meat_can_16k" if="$(eval ycb_item=='spam')" />
+
+  <node name="image_saver_left" pkg="image_view" type="image_saver" respawn="false" required="true" output="screen" args="'_filename_format:=$(find jackal_ros)/../$(arg image_folder)/00$(arg number)/left/%05i.png' _image_transport:=compressed" >
+    <remap from="image" to="/zed2/zed_node/left/image_rect_color"/>
+  </node>
+
+  <node name="image_saver_right" pkg="image_view" type="image_saver" respawn="false" required="true" output="screen" args="'_filename_format:=$(find jackal_ros)/../$(arg image_folder)/00$(arg number)/right/%05i.png' _image_transport:=compressed" >
+    <remap from="image" to="/zed2/zed_node/right/image_rect_color"/>
+  </node>
+
+  <!-- <arg name="calib_file" default="$(find svo_ros)/param/calib/run2.yaml"/>   -->
+  <arg name="calib_file" default="$(find jackal_ros)/calibs/cracker.yaml"/>  
+
+  <!-- Uncompress images and convert into greyscale -->
+  <node pkg="image_transport" type="republish" name="image_republisher0" required="true" args="compressed in:=/zed2/zed_node/left/image_rect_color raw out:=/image0/uncompressed _image_transport:=compressed" />
+  <node pkg="image_transport" type="republish" name="image_republisher1" required="true" args="compressed in:=/zed2/zed_node/right/image_rect_color raw out:=/image1/uncompressed _image_transport:=compressed" />
+
+  <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale0" required="true" args="/image0/uncompressed /gray_image0" />
+  <node pkg="svo_ros" type="rgb_to_greyscale.py" name="image_to_grayscale1" required="true" args="/image1/uncompressed /gray_image1" />
+
+  <!-- Logger node -->
+  <node pkg="jackal_ros" type="log_poses.py" name="pose_logger" />
+
+  <!-- SVO node -->
+  <node pkg="svo_ros" type="svo_node" name="svo" clear_params="true" output="screen" >
+
+    <!-- Camera topic to subscribe to -->
+    <param name="cam0_topic" value="/gray_image0" type="str" />
+    <param name="cam1_topic" value="/gray_image1" type="str" />
+
+    <!-- Camera calibration file -->
+    <param name="calib_file" value="$(arg calib_file)" />
+
+    <!--Parameters-->
+    <rosparam file="$(find jackal_ros)/calibs/pinhole_stereo.yaml" />
+    <param name="map_scale" value="1" />
+
+    <!-- Loop closure detection parameters -->
+    <param name="runlc" value="false" />
+
+  </node>
+
+  <!-- RVIZ + SVO GUI -->
+  <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" />
+  <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
+
+<param name="/use_sim_time" value="true" type="bool" />
+
+  <node pkg="rosbag" type="play" name="rosbag" args="--queue=1000 --delay=3 --clock $(find jackal_ros)/../bags/ziqi/$(arg ycb_item)_$(arg number).bag"/>
+
+</launch>

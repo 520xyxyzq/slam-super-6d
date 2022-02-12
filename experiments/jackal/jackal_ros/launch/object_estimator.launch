@@ -1,0 +1,6 @@
+<launch>
+
+<rosparam file="$(find jackal_ros)/config/ycb_item.yaml" />
+<node pkg="jackal_ros" type="save_apriltag_poses.py" name="object_estimator" required="true" />
+
+</launch>

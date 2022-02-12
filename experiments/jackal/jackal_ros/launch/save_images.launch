@@ -14,4 +14,6 @@
     <remap from="image" to="/zed2/zed_node/right/image_rect_color"/>
   </node>
 
+  <node pkg="rosbag" type="play" name="rosbag" required="true" args="--delay=1 --clock $(find jackal_ros)/../bags/ziqi/$(arg ycb_item)_$(arg number).bag"/>
+
 </launch>

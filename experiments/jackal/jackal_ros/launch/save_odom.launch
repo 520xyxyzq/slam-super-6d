@@ -1,8 +1,10 @@
 <launch>
 
-
   <arg name="ycb_item" />
   <arg name="number" />
+
+  <rosparam param="ycb_item" subst_value="True">$(arg ycb_item)</rosparam>
+  <rosparam param="number" subst_value="True">$(arg number)</rosparam>
 
   <!-- <arg name="calib_file" default="$(find svo_ros)/param/calib/run2.yaml"/>   -->
   <arg name="calib_file" default="$(find jackal_ros)/calibs/cracker.yaml"/>  
@@ -41,5 +43,7 @@
   <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
 
 <param name="/use_sim_time" value="true" type="bool" />
+
+  <node pkg="rosbag" type="play" name="rosbag" args="--delay=3 --clock $(find jackal_ros)/../bags/ziqi/$(arg ycb_item)_$(arg number).bag"/>
 
 </launch>

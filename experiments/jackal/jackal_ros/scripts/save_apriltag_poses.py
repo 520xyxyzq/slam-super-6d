@@ -6,7 +6,11 @@ import rospkg
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot
 from apriltag_ros.msg import AprilTagDetectionArray
+from sensor_msgs.msg import Image
 import sys
+import cv2
+import cv_bridge
+
 
 VALID_YCB_ITEMS = ["cracker", "sugar", "spam"]
 VALID_NUMBERS = [1, 2, 3, 4]
@@ -22,12 +26,26 @@ PAPER_A4_HEIGHT = 297e-3 # m
 PAPER_A4_WIDTH = 210e-3 # m
 
 
+CAMERA_INTRINSICS = [
+    276.32251, # fx
+    276.32251, # fy
+    353.70087, # cx
+    179.08852  # cy
+]
+
+
 def Rt2T(R, t):
     T = np.eye(4)
     T[:3, :3] = R
     T[:3, -1] = t
 
     return T
+
+def T2Rt(T):
+    R = T[:3, :3]
+    t = T[:3, -1]
+
+    return R, t
 
 def pose_msg2T(pose_msg):
     t = np.array([
@@ -47,8 +65,48 @@ def pose_msg2T(pose_msg):
 
     return T
 
+def project(K, X):
+    """
+    Computes the pinhole projection of a (3 or 4)xN array X using
+    the camera intrinsic matrix K. Returns the pixel coordinates
+    as an array of size 2xN.
+    """
+    if len(X.shape) == 3:
+        uvw = K[None].dot(X[:,:3,:])
+        uvw /= uvw[:,None,2,:]
+        uv = uvw[:,:2,:]
+        uv = np.vstack((uv[:,0,:].ravel(), uv[:,1,:].ravel()))
+    else:
+        uvw = K.dot(X[:3,:])
+        uvw /= uvw[2,:]
+        uv = uvw[:2,:]
+    return uv.astype(int)
+
+
+def draw_frame(img, K, R, t, scale=1):
+    """
+    Visualize the coordinate frame axes of the 4x4 object-to-camera
+    matrix T using the 3x3 intrinsic matrix K.
+    Control the length of the axes by specifying the scale argument.
+    """
+    T = Rt2T(R, t)
+    X = T.dot(np.array([
+        [0,scale,0,0],
+        [0,0,scale,0],
+        [0,0,0,scale],
+        [1,1,1,1]]))
+    u,v = project(K, X)
+
+    print("u: {}\nv: {}".format(u, v))
+
+    img = cv2.line(img, (int(u[0]), int(v[0])), (int(u[1]), int(v[1])), (255,0,0), 5)
+    img = cv2.line(img, (int(u[0]), int(v[0])), (int(u[2]), int(v[2])), (0,255,0), 5)
+    img = cv2.line(img, (int(u[0]), int(v[0])), (int(u[3]), int(v[3])), (0,0,255), 5)
+
+    return img
+
 class ObjectPoseEstimator(object):
-    def __init__(self, ycb_item):
+    def __init__(self):
         if not rospy.has_param("ycb_item"):
             rospy.logerr("Needs YCB item to estimate object pose!")
             sys.exit(-1)
@@ -60,13 +118,28 @@ class ObjectPoseEstimator(object):
 
         self.ycb_item = ycb_item
         self.apriltag_detections_sub = rospy.Subscriber("/tag_detections", AprilTagDetectionArray, self.apriltag_detections_cb, queue_size=1000)
+        self.object_pose_pub = rospy.Publisher("/object_pose_estimates", Image, queue_size=1000)
 
         self.min_id = self.get_min_tag_id(ycb_item)
         self.T_tos = self.compute_T_tos()
 
         self.all_computed_transforms = []
 
+        fx, fy, cx, cy = CAMERA_INTRINSICS
+        self.K = np.array([
+            [fx, 0, cx],
+            [0, fy, cy],
+            [0,  0,  1]
+        ])
+
         rospy.on_shutdown(self.save_to_file)
+
+    # Hardcoding, but just for visualization
+    def draw_transform_to_img(self, image_id, T):
+        img = cv2.imread("/home/odinase/mrg_ws/src/slam-super-6d/experiments/jackal/003_cracker_box_16k/001/left/{}.png".format(str(image_id).zfill(5)), cv2.IMREAD_COLOR)
+        R, t = T2Rt(T)
+        img = draw_frame(img, self.K, R, t)
+        return img
 
     def average_transforms(self, transforms):
         t_avg = transforms[:, :3, -1].mean(axis=0)
@@ -76,24 +149,26 @@ class ObjectPoseEstimator(object):
         U, _, VT = np.linalg.svd(R_avg)
         D = np.eye(3)
         D[-1, -1] = np.linalg.det(U)*np.linalg.det(VT)
-        R_avg = U@D@VT
+        R_avg = U.dot(D).dot(VT)
 
         T_avg = Rt2T(R_avg, t_avg)
 
         return T_avg
 
-    def T2idposquat(image_id, T):
+    def T2idposquat(self, image_id, T):
         quat = Rot.from_dcm(T[:3, :3]).as_quat()
         pos = T[:3, -1]
         return np.hstack((image_id, pos, quat))
 
     def apriltag_detections_cb(self, apriltag_detections_msg):
+        if len(apriltag_detections_msg.detections) == 0:
+            return
         image_id = apriltag_detections_msg.header.seq
 
         transforms = np.empty((len(apriltag_detections_msg.detections), 4, 4))
 
         for k, apriltag_detection in enumerate(apriltag_detections_msg.detections):
-            tag_id = apriltag_detection.size[0]
+            tag_id = apriltag_detection.id[0]
             if not tag_id in VALID_APRILTAG_IDS[self.ycb_item["name"]]:
                 rospy.logwarn("Detected tag id {} which should not be possible for YCB item '{}'".format(tag_id, self.ycb_item["name"]))
                 continue
@@ -102,12 +177,18 @@ class ObjectPoseEstimator(object):
             tag_id = tag_id % self.min_id
 
             # T_ct = transform of tag (t) relative camera (c)
-            T_ct = pose_msg2T(apriltag_detection.pose) # Needs to peel of one "pose" layer as original message is PoseWithCovarianceStamped
+            T_ct = pose_msg2T(apriltag_detection.pose.pose) # Needs to peel of one "pose" layer as original message is PoseWithCovarianceStamped
             # Object pose in camera frame
             T_co = T_ct.dot(self.T_tos[tag_id])
             transforms[k] = T_co
 
         T_co = self.average_transforms(transforms)
+
+        img = self.draw_transform_to_img(image_id, T_co)
+        bridge = cv_bridge.CvBridge()
+        image_message = bridge.cv2_to_imgmsg(img, encoding="passthrough")
+
+        self.object_pose_pub.publish(image_message)
 
         self.all_computed_transforms.append(self.T2idposquat(image_id, T_co))
 
@@ -171,4 +252,8 @@ class ObjectPoseEstimator(object):
         np.savetxt(path + "./object_frame_image_id_raw.txt", mat)
 
 if __name__ == "__main__":
-    pass
+    rospy.init_node("object_pose_estimator")
+
+    object_estimator = ObjectPoseEstimator()
+
+    rospy.spin()

@@ -146,7 +146,7 @@ def parse_odom(odom_bag_path):
 
     return np.array(odoms), np.array(ts), t0
 
-def parse_gt(gt_bag_path, t0):
+def parse_gt(gt_bag_path):
     gt_bag = rosbag.Bag(gt_bag_path)
 
     ts = []
@@ -167,12 +167,12 @@ def parse_gt(gt_bag_path, t0):
     # geometry_msgs/TransformStamped
     for k, (_, msg, t) in enumerate(gt_bag.read_messages(topics=['/vicon/ZED2_ZQ/ZED2_ZQ'])):
         t = t.to_sec()
-        if k == 0:
-            # Initialize previous transform to compute relative transforms
-            prev_T = transorm_msg2T(msg.transform)
-            # Define first transform as identity
-            gts.append(prev_T)
-            continue
+        # if k == 0:
+        #     # Initialize previous transform to compute relative transforms
+        #     prev_T = transorm_msg2T(msg.transform)
+        #     # Define first transform as identity
+        #     gts.append(prev_T)
+        #     continue
         
         T = transorm_msg2T(msg.transform)
         # rel_T_gt = invT(prev_T).dot(T)
@@ -180,9 +180,9 @@ def parse_gt(gt_bag_path, t0):
         # rel_T_cam = T_cv.dot(rel_T_gt).dot(T_cv_inv)
 
         # Take previous transform and append relative transform to get new "absolute transform" relative camera frame
-        new_T = T #gts[k-1].dot(rel_T_cam)
+        # new_T = T #gts[k-1].dot(rel_T_cam)
 
-        gts.append(new_T)
+        gts.append(T)
         ts.append(t)
 
     gt_bag.close()
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     t0 = 0
 
     print("looking at bag {}".format(gt_bag_path))
-    gts, ts_gt = parse_gt(gt_bag_path, t0)
+    gts, ts_gt = parse_gt(gt_bag_path)
 
     # write_Ts_ts_to_TUM(odoms, ts, "odom.txt")
     write_Ts_ts_to_TUM(gts, ts_gt, "cam_gt_raw.txt")

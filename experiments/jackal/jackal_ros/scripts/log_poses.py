@@ -6,6 +6,25 @@ from geometry_msgs.msg import PoseStamped
 
 import numpy as np
 
+def get_save_path(jackal_path):
+    if not rospy.has_param("ycb_item") or not rospy.has_param("number"):
+        rospy.logwarn("Could not find param for YCB item or number, saving directly to {}".format(jackal_path))
+        return jackal_path
+
+    ycb_item = rospy.get_param("ycb_item")
+    number = rospy.get_param("number")
+
+    if ycb_item == "cracker":
+        image_folder = "003_cracker_box_16k"
+    elif ycb_item == "sugar":
+        image_folder = "004_sugar_box_16k"
+    elif ycb_item == "spam":
+        image_folder = "010_potted_meat_can_16k"
+
+    save_path = "{}/../{}/00{}".format(jackal_path, image_folder, number)
+
+    return save_path
+    
 
 class Logger(object):
     def __init__(self):
@@ -41,6 +60,6 @@ if __name__ == '__main__':
         pass
 
     jackal_path = rospkg.RosPack().get_path('jackal_ros')
-    log_path = jackal_path + "/../logs"
-    rospy.loginfo("Logging to " + log_path)
-    logger.save_to_file(log_path)
+    save_path = get_save_path(jackal_path)
+    rospy.loginfo("Saving to " + save_path)
+    logger.save_to_file(save_path)

@@ -1,7 +1,7 @@
 build/
-**/bags
 **/left
 **/right
+**/bags
 **/*.zip
 .vscode/
 *.pth
