@@ -3,3 +3,5 @@ build/
 *.pth
 *.so
 *.egg-info/
+*.png
+*.jpg
