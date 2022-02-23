@@ -12,12 +12,15 @@ import sys
 
 
 def parse_inputs(argv):
+    real_path = os.path.realpath(__file__)
+    dirname = os.path.dirname(real_path)
+
+    if len(sys.argv) == 2 and argv[1] == "all":
+        return "all", None, dirname
     if not len(sys.argv) == 3:
         print("Needs to pass in arg for YCB object and dataset number, received now {} args".format(len(sys.argv)))
         sys.exit(-1)
 
-    real_path = os.path.realpath(__file__)
-    dirname = os.path.dirname(real_path)
     ycb_item = sys.argv[1]
 
     if not ycb_item in ["cracker", "sugar", "spam"]:
@@ -97,8 +100,7 @@ def write_Ts_ts_to_TUM(Ts, ts, filename="poses.txt"):
 
     np.savetxt(filename, tum_lines)
 
-if __name__ == "__main__":
-    ycb_item, number, dirname = parse_inputs(sys.argv)
+def synchronize_odom_gt(dirname, ycb_item, number):
     save_path = get_save_path(dirname, ycb_item, number)
     odom_data = save_path + "/odom_raw.txt" # SVO odom
     gt_data = save_path + "/cam_gt_raw.txt"
@@ -126,7 +128,18 @@ if __name__ == "__main__":
 
     print("Rotation: {}\n translation: {}\n scale: {}".format(rot*180/np.pi, t, scale))
 
-    file_interface.write_tum_trajectory_file()
+    file_interface.write_tum_trajectory_file(save_path + "/odom.txt", odom_traj)
+    file_interface.write_tum_trajectory_file(save_path + "/cam_gt.txt", gt_traj)
 
-    # write_Ts_ts_to_TUM(odoms, ts, "odom.txt")
-    # write_Ts_ts_to_TUM(gts, ts_gt, "cam_gt.txt")
+if __name__ == "__main__":
+    ycb_item, number, dirname = parse_inputs(sys.argv)
+    if ycb_item == "all":
+        ycb_items = ["cracker", "sugar", "spam"]
+        numbers = [1, 2, 3, 4]
+        for ycb_item in ycb_items:
+            for number in numbers:
+                print(f"Parsing {ycb_item} {number}")
+                synchronize_odom_gt(dirname, ycb_item, number)
+    else:
+        synchronize_odom_gt(dirname, ycb_item, number)
+    
