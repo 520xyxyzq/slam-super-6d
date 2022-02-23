@@ -769,10 +769,11 @@ class PseudoLabeler(object):
                     fmt=["%d"]*2 + ["%.2f"]*3
                 )
 
-    def plot(self, gt_cam=None, save=False, out=None):
+    def plot(self, gt_cam=None, gt_obj=None, save=False, out=None):
         """
         Plot estimation results
         @param gt_cam: [str] (Optional) ground truth camera poses
+        @param gt_obj: [str] (Optional) ground truth object poses
         @param save: [bool] Save the figure?
         @param out: [string] Where to save the figure
         """
@@ -1037,6 +1038,6 @@ if __name__ == '__main__':
     #     evo_error.error(verbose=args.verbose, save=args.save)
     # Plot or save the traj and landmarks
     if args.plot or args.save:
-        pl.plot(args.gt_cam, args.save, target_folder)
+        pl.plot(args.gt_cam, args.gt_obj, args.save, target_folder)
         if args.plot and args.save:
             print("Info: plot is saved to %s" % target_folder)
