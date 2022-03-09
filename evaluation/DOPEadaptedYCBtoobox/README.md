@@ -51,10 +51,10 @@ The *-meta.mat file in the YCB-Video dataset contains the following fields:
 
 1. Set the path to YCB-Video dataset in globals.m
 
-2. (a) Set the inputs (results directory and object class index) in dope_evaluate_poses_keyframe.m and run.
+2. Set the inputs (results directory and object class index) in dope_evaluate_poses_keyframe.m and run.
 
-2. (b) If want to run results from multiple models at the same time, run dope_evaluate_poses_keyframe_batch.m instead.
+3. If want to run results from multiple models at the same time, run dope_evaluate_poses_keyframe_batch.m instead.
 
-3. (a) Run dope_plot_accuracy_keyframe.m and view plots in /plots.
+4. Run dope_plot_accuracy_keyframe.m and view plots in /plots.
 
-3. (b) If want to plot results from multiple models in one plot, set the legends and index_plot in dope_plot_accuracy_keyframe.m and run.
+5. If want to plot results from multiple models in one plot, set the legends and index_plot in dope_plot_accuracy_keyframe.m and run.
