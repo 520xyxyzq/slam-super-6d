@@ -3,12 +3,11 @@ clearvars
 
 % inputs
 opt = globals();
-root_dir = '/data/SelfObjectPose/Work/slam-super-6d'; % slam-super-6d dir
-% result_dir = horzcat(root_dir, '/evaluation/Results');
-% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt';
-% result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/dets/ground_truth/003_cracker_box_16k';
-result_dir = '/data/SelfObjectPose/Work/slam-super-6d/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt';
-test_cls_idx = 2; % 1-indexed (e.g. 2 = cracker box)
+root_dir = '/home/yihao/Research/SelfObjectPose/Work/slam-super-6d'; % slam-super-6d dir
+% result_dir = horzcat(root_dir, '/experiments/ycbv/inference/003_cracker_box_16k/ycb_gt');
+% result_dir = horzcat(root_dir, '/experiments/ycbv/dets/ground_truth/003_cracker_box_16k');
+result_dir = horzcat(root_dir, '/experiments/ycbv/dets/ground_truth/003_cracker_box_16k'); % set path to results
+test_cls_idx = 2; % 1-indexed (e.g. 2 = cracker box, 3 = sugar, 9 = meat can)
 
 % read dope2ycb fixed transformation
 json_file = horzcat(root_dir, '/experiments/ycbv/_ycb_original.json');

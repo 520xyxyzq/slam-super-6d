@@ -1,11 +1,10 @@
 function dope_plot_accuracy_keyframe
 
-color = {'r', 'y', 'g', 'b', 'm'};
-% leng = {'PoseCNN', 'PoseCNN+ICP', 'PoseCNN+Multiview', 'PoseCNN+ICP+Multiview', ...
-%     '3D Coordinate Regression'};
+color = {'k', 'r', 'g', 'b', 'm'};
 leng = {'DOPE'};
-% index_plot = [4, 2, 5, 3, 1];
+% leng = {'Synthetic', 'Hybrid', 'Inlier', 'Pose Eval', 'Ground Truth'};
 index_plot = [1];
+% index_plot = [1, 2, 3, 4, 5]; % order in which results of multiple models are recorded
 aps = zeros(5, 1);
 lengs = cell(5, 1);
 close all;
@@ -26,7 +25,7 @@ classes{end+1} = 'All 21 objects';
 fclose(fid);
 
 hf = figure('units','normalized','outerposition',[0 0 1 1]);
-font_size = 24;
+font_size = 12;
 max_distance = 0.1;
 
 % for each class
@@ -40,7 +39,7 @@ for k = 1:numel(classes)
     subplot(2, 2, 1);
     for i = index_plot
         D = distances_sys(index, i);
-        D(D > max_distance) = inf;
+        D(D > max_distance) = inf; % accuracy will be clipped below 1 if many inf points since they are not plotted
         d = sort(D);
         n = numel(d);
         accuracy = cumsum(ones(1, n)) / n;        
@@ -49,14 +48,14 @@ for k = 1:numel(classes)
         lengs{i} = sprintf('%s (%.2f)', leng{i}, aps(i) * 100);
         hold on;
     end
+    xlim([0 0.1])
+    ylim([0 1])
     hold off;
-    %h = legend('network', 'refine tranlation only', 'icp', 'stereo translation only', 'stereo full', '3d coordinate');
-    %set(h, 'FontSize', 16);
     h = legend(lengs(index_plot), 'Location', 'southeast');
     set(h, 'FontSize', font_size);
     h = xlabel('Average distance threshold in meter (symmetry)');
     set(h, 'FontSize', font_size);
-    h = ylabel('accuracy');
+    h = ylabel('Accuracy');
     set(h, 'FontSize', font_size);
     h = title(classes{k}, 'Interpreter', 'none');
     set(h, 'FontSize', font_size);
@@ -76,14 +75,14 @@ for k = 1:numel(classes)
         lengs{i} = sprintf('%s (%.2f)', leng{i}, aps(i) * 100);        
         hold on;
     end
+    xlim([0 0.1])
+    ylim([0 1])
     hold off;
-    %h = legend('network', 'refine tranlation only', 'icp', 'stereo translation only', 'stereo full', '3d coordinate');
-    %set(h, 'FontSize', 16);
     h = legend(lengs(index_plot), 'Location', 'southeast');
     set(h, 'FontSize', font_size);
     h = xlabel('Average distance threshold in meter (non-symmetry)');
     set(h, 'FontSize', font_size);
-    h = ylabel('accuracy');
+    h = ylabel('Accuracy');
     set(h, 'FontSize', font_size);
     h = title(classes{k}, 'Interpreter', 'none');
     set(h, 'FontSize', font_size);    
@@ -100,14 +99,14 @@ for k = 1:numel(classes)
         plot(d, accuracy, color{i}, 'LineWidth', 4);
         hold on;
     end
+    xlim([0 200])
+    ylim([0 1])
     hold off;
-    %h = legend('network', 'refine tranlation only', 'icp', 'stereo translation only', 'stereo full', '3d coordinate');
-    %set(h, 'FontSize', 16);
     h = legend(leng(index_plot), 'Location', 'southeast');
     set(h, 'FontSize', font_size);
     h = xlabel('Rotation angle threshold');
     set(h, 'FontSize', font_size);
-    h = ylabel('accuracy');
+    h = ylabel('Accuracy');
     set(h, 'FontSize', font_size);
     h = title(classes{k}, 'Interpreter', 'none');
     set(h, 'FontSize', font_size);
@@ -125,12 +124,14 @@ for k = 1:numel(classes)
         plot(d, accuracy, color{i}, 'LineWidth', 4);
         hold on;
     end
+    xlim([0 0.1])
+    ylim([0 1])
     hold off;
     h = legend(leng(index_plot), 'Location', 'southeast');
     set(h, 'FontSize', font_size);
     h = xlabel('Translation threshold in meter');
     set(h, 'FontSize', font_size);
-    h = ylabel('accuracy');
+    h = ylabel('Accuracy');
     set(h, 'FontSize', font_size);
     h = title(classes{k}, 'Interpreter', 'none');
     set(h, 'FontSize', font_size);
@@ -139,6 +140,8 @@ for k = 1:numel(classes)
     
     filename = sprintf('plots/%s.png', classes{k});
     hgexport(hf, filename, hgexport('factorystyle'), 'Format', 'png');
+    filename = sprintf('plots/%s.fig', classes{k});
+    hgexport(hf, filename, hgexport('factorystyle'), 'Format', 'fig');
 end
 
 function ap = VOCap(rec, prec)

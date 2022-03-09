@@ -1,6 +1,6 @@
 function opt = globals()
 
-opt.root = '/data/SelfObjectPose/YCB_Video_Dataset';
+opt.root = '/data/Datasets/YCB_Video_Dataset';
 opt.num_classes = 21;
 
 opt.seq_num = 92;
