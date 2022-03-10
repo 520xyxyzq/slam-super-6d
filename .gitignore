@@ -5,3 +5,4 @@ build/
 *.egg-info/
 *.png
 *.jpg
+!media/**
