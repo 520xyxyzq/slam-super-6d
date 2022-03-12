@@ -7,7 +7,7 @@ TLDR: We exploit robust pose graph optimization results to pseudo-label robot-co
 
 ![Method Overview](media/figure1.png)
 
-The two most important elements of this work
+The two most important features of this work
 
 - A SLAM-aided self-training procedure for 6D object pose estimation.
 
