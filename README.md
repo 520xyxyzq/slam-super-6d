@@ -3,7 +3,15 @@ SLAM-Supported Semi-Supervised Learning for 6D Object Pose Estimation
 
 Check out our [paper](https://arxiv.org/pdf/2203.04424.pdf)!
 
+TLDR: We exploit robust pose graph optimization results to pseudo-label robot-collected RGB images and fine-tune 6D object pose estimators during object-based navigation.
+
 ![Method Overview](media/figure1.png)
+
+The two most important elements of this work
+
+- A SLAM-aided self-training procedure for 6D object pose estimation.
+
+- Automatic covariance tuning (ACT), a robust pose graph optimization method, enabling flexible uncertainty modeling for learning-based measurements.
 
 ## Developing
 
