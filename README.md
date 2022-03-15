@@ -13,6 +13,10 @@ The two most important features of this work
 
 - Automatic covariance tuning (ACT), a robust pose graph optimization method, enabling flexible uncertainty modeling for learning-based measurements.
 
+## YCB video experiment
+
+<img src="media/YCB-v-test.gif" width="500">
+
 ## Developing
 
 We're using [pre-commit](https://pre-commit.com/) for automatic linting. To install `pre-commit` run:
