@@ -16,6 +16,7 @@ The two most important features of this work
 ## YCB video experiment
 
 <img src="media/YCB-v-test.gif" width="400">
+<img src="media/YCB-v-test-slam.gif" width="400">
 
 ## Developing
 
