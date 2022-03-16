@@ -15,11 +15,11 @@ The two most important features of this work
 
 ## YCB video experiment
 
-### Comparison of robust pose graph optimization methods
+#### Comparison of robust pose graph optimization methods for pseudo-labeling
 
 
 |003_cracker_box | 0001     | 0004     | 0007    | 0016     | 0017     | 0019     | 0025     | #best |
-|:-:             |:-:       |:-:       |:-:      |:-:       |:-:       |:-:       |:-:       |:-:    |
+|---             |:-:       |:-:       |:-:      |:-:       |:-:       |:-:       |:-:       |:-:    |
 |LM              | 62.3     | 58.7     | 13.2    | 69.4     | 37.6     | 110.1    | 101.6    | 0     |
 |Cauchy          | 12.4     | **10.8** | 10.2    | 13.8     | 29.5     | 94.4     | 171.4    | 4     |
 |Huber           | 31.4     | 25.4     | 10.2    | 34.2     | 21.6     | 52.5     | 57.0     | 1     |
@@ -28,7 +28,7 @@ The two most important features of this work
 |ACT (Ours)      | 15.7     | 12.0     | **9.4** | **12.6** | **20.3** | 52.0     | **15.4** | **9** |
 
 
-### Pose estimation results on test sequences
+#### Pose estimation results on test sequences
 
 <p align="middle">
     <img src="media/YCB-v-test.gif" width="400">
