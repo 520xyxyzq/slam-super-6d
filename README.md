@@ -17,8 +17,8 @@ The two most important features of this work
 
 ### Comparison of robust pose graph optimization methods
 
-<style scoped>
-table {
+<style>
+td {
   font-size: 13px;
 }
 </style>
