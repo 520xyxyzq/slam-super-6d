@@ -15,6 +15,10 @@ The two most important features of this work
 
 ## YCB video experiment
 
+### Comparison of robust pose graph optimization methods via pseudo label accuracy
+
+### Pose estimation results on test sequences
+
 <p align="middle">
     <img src="media/YCB-v-test.gif" width="400">
     <img src="media/YCB-v-test-slam.gif" width="400">
