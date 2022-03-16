@@ -16,7 +16,7 @@ The two most important features of this work
 ## YCB video experiment
 
 We combine [DOPE](https://github.com/NVlabs/Deep_Object_Pose) pose predictions with [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) camera odometry to build per-video object-level maps.
-And we exploit the robust state estimates to pseudo-label YCB-v training images and fine-tune the DOPE estimator of selected YCB objects.
+And we exploit the state estimates to pseudo-label YCB-v training images and fine-tune the DOPE estimator for selected YCB objects.
 
 ### Comparison of robust pose graph optimization methods for pseudo-labeling
 
@@ -33,8 +33,10 @@ And we exploit the robust state estimates to pseudo-label YCB-v training images 
 ### Pose estimation and SLAM results on test sequences
 
 <p align="middle">
-    <img src="https://drive.google.com/uc?export=view&id=1hCG_yahIi0OuEeuma-M1SOw3QnW9C-DA" width="400">
-    <img src="https://drive.google.com/uc?export=view&id=164MzFQubQy-YUjDYhjq-R3KpF7Aor86J" width="400">
+    <img src="media/YCB-v-test.gif" width="400">
+    <img src="media/YCB-v-test-slam.gif" width="400">
+    <!-- <img src="https://drive.google.com/uc?export=view&id=1hCG_yahIi0OuEeuma-M1SOw3QnW9C-DA" width="400"> -->
+    <!-- <img src="https://drive.google.com/uc?export=view&id=164MzFQubQy-YUjDYhjq-R3KpF7Aor86J" width="400"> -->
 </p>
 
 ## Developing
