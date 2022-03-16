@@ -5,7 +5,7 @@ Check out our [paper](https://arxiv.org/pdf/2203.04424.pdf)!
 
 TLDR: We exploit robust pose graph optimization results to pseudo-label robot-collected RGB images and fine-tune 6D object pose estimators during object-based navigation.
 
-![Method Overview](media/figure1.png)
+![Method Overview](https://drive.google.com/file/d/1sdTURiSuy8IlMDEZNW4DhoKklaWhk4pY/view?usp=sharing)
 
 The two most important features of this work
 
@@ -15,8 +15,9 @@ The two most important features of this work
 
 ## YCB video experiment
 
-### Comparison of robust pose graph optimization methods for pseudo-labeling
+We combine [DOPE](https://github.com/NVlabs/Deep_Object_Pose) pose predictions with [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) camera odometry to build per-video object-level maps for self-training of the DOPE estimator of selected YCB objects.
 
+### Comparison of robust pose graph optimization methods for pseudo-labeling
 
 |003_cracker_box | 0001     | 0004     | 0007    | 0016     | 0017     | 0019     | 0025     | #best |
 |---             |:-:       |:-:       |:-:      |:-:       |:-:       |:-:       |:-:       |:-:    |
@@ -31,8 +32,8 @@ The two most important features of this work
 ### Pose estimation and SLAM results on test sequences
 
 <p align="middle">
-    <img src="media/YCB-v-test.gif" width="400">
-    <img src="media/YCB-v-test-slam.gif" width="400">
+    <img src="https://drive.google.com/file/d/1hCG_yahIi0OuEeuma-M1SOw3QnW9C-DA/view?usp=sharing" width="400">
+    <img src="https://drive.google.com/file/d/164MzFQubQy-YUjDYhjq-R3KpF7Aor86J/view?usp=sharing" width="400">
 </p>
 
 ## Developing
