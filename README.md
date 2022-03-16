@@ -15,7 +15,13 @@ The two most important features of this work
 
 ## YCB video experiment
 
-### Comparison of robust pose graph optimization methods via pseudo label accuracy
+### Comparison of robust pose graph optimization methods
+
+<table>
+<tr>
+<td colspan=1>
+     Pseudo label accuracy on YCB video sequences
+</td>
 
 |003_cracker_box | 0001     | 0004     | 0007    | 0016     | 0017     | 0019     | 0025     | #best |
 |---             |---       |---       |---      |---       |---       |---       |---       |---    |
@@ -25,6 +31,7 @@ The two most important features of this work
 |Geman-McClure   | **11.5** | 168.4    | 10.2    | 115.0    | 48.4     | 94.4     | 171.4    | 2     |
 |cDCE            | 28.7     | 25.4     | 10.5    | 32.5     | 21.1     | **45.2** | 58.9     | 4     |
 |ACT(Ours)       | 15.7     | 12.0     | **9.4** | **12.6** | **20.3** | 52.0     | **15.4** | **9** |
+</tr>
 
 ### Pose estimation results on test sequences
 
