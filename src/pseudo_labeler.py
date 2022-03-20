@@ -15,7 +15,7 @@ from label_eval import LabelEval
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from utils import gtsamPose32Tum, readNoiseModel, readTum
+from utils import pose3DictToTum, readNoiseModel, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -577,21 +577,6 @@ class PseudoLabeler(object):
             return False
         return True
 
-    def assembleData(self, data_dict):
-        """
-        Assemble pseudo labels (tum format) from relative object poses
-        (GTSAM format)
-        @param data_dict: [{stamp:gtsam.Pose3}] Recomputed obj detections
-        @param data: [Nx8 array] stamp,x,y,z,qx,qy,qz,qw
-        """
-        assert(len(data_dict) > 0), "Error: Recomputed detections empty"
-        stamps = sorted(data_dict.keys())
-        data = np.zeros((len(stamps), 8))
-        for ii, stamp in enumerate(stamps):
-            data[ii, 0] = stamp
-            data[ii, 1:] = gtsamPose32Tum(data_dict[stamp])
-        return data
-
     def labelOutliers(self, errors, det_std, chi2_thresh=0.95):
         """
         Label outlier object pose detections using Chi2 test
@@ -662,7 +647,7 @@ class PseudoLabeler(object):
                       )
                 continue
             # Save pseudo labels
-            data = self.assembleData(plabel)
+            data = pose3DictToTum(plabel)
             out_fname = self._det_fnames_[ii]
             # Save hard examples (false positives and false negatives) to files
             fp = [stamp for stamp in self._outliers_[ii] if stamp in plabel]
@@ -790,7 +775,7 @@ class PseudoLabeler(object):
             gt_cam_dict = {
                 t: pose_origin.inverse() * p for (t, p) in gt_cam_dict.items()
             }
-            gt_cam_array = self.assembleData(gt_cam_dict)
+            gt_cam_array = pose3DictToTum(gt_cam_dict)
             axes.plot3D(
                 gt_cam_array[:, 1], gt_cam_array[:, 2], gt_cam_array[:, 3],
                 "k--", linewidth=2, label="ground truth"

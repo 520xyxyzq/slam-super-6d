@@ -61,6 +61,23 @@ def gtsamPose32Tum(pose3):
     return tum_pose
 
 
+def pose3DictToTum(data_dict):
+    """
+    Convert dict of GTSAM poses to (tum format) array
+    @param data_dict: [{stamp:gtsam.Pose3}] Stamp-Pose3 dict
+    @param data_tum: [Nx8 array] stamp,x,y,z,qx,qy,qz,qw
+    """
+    assert(len(data_dict) > 0), "Error: Data dictionary empty"
+    # Make sure stamps are in sorted order
+    stamps = sorted(data_dict.keys())
+    # Save as tum format array
+    data_tum = np.zeros((len(stamps), 8))
+    for ii, stamp in enumerate(stamps):
+        data_tum[ii, 0] = stamp
+        data_tum[ii, 1:] = gtsamPose32Tum(data_dict[stamp])
+    return data_tum
+
+
 def readNoiseModel(noise):
     """
     Read noise as GTSAM noise model
