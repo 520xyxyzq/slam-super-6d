@@ -15,7 +15,7 @@ from label_eval import LabelEval
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from utils import gtsamPose32Tum, readTum
+from utils import gtsamPose32Tum, readNoiseModel, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -109,8 +109,8 @@ class PseudoLabeler(object):
                 self._init_vals_.insert(L(ll), avg_pose)
 
         # Read noise models
-        prior_noise_model = self.readNoiseModel(prior_noise)
-        odom_noise_model = self.readNoiseModel(odom_noise)
+        prior_noise_model = readNoiseModel(prior_noise)
+        odom_noise_model = readNoiseModel(odom_noise)
         det_noise_model = self.readRobustNoiseModel(
             det_noise, kernel, kernel_param
         )
@@ -151,27 +151,6 @@ class PseudoLabeler(object):
                     )
             it += 1
 
-    def readNoiseModel(self, noise):
-        """
-        Read noise as GTSAM noise model
-        @param noise: [1 or 6 array/list or gtsam.noiseModel] Noise model
-        @return noise_model: [gtsam.noiseModel] GTSAM noise model
-        """
-        # Read prior noise model
-        # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
-        if type(noise) in [gtsam.noiseModel.Isotropic,
-                           gtsam.noiseModel.Diagonal]:
-            return noise
-        if len(noise) == 1:
-            noise_model = \
-                gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
-        elif len(noise) == 6:
-            noise_model = \
-                gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
-        else:
-            assert(False), "Error: Unexpected noise model type!"
-        return noise_model
-
     def readRobustNoiseModel(self, noise, kernel, kernel_param):
         """
         Read noise model and set robust kernel
@@ -184,7 +163,7 @@ class PseudoLabeler(object):
         # noise as dict: noise model is factor dependent
         # else: noise model is constant
         robust_noise_model = \
-            noise if type(noise) is dict else self.readNoiseModel(noise)
+            noise if type(noise) is dict else readNoiseModel(noise)
 
         # Set robust kernel
         if kernel == Kernel.Gauss:
@@ -627,7 +606,7 @@ class PseudoLabeler(object):
         # the chi2 test.
         assert(not type(det_std) == dict), \
             "Error: We should always use a fixed std for chi2 test"
-        det_noise = self.readNoiseModel(det_std) if \
+        det_noise = readNoiseModel(det_std) if \
             type(det_std) in (np.ndarray, list) else det_std
         sigmas = det_noise.sigmas()
         chi2inv = chi2.ppf(chi2_thresh, df=len(sigmas))

@@ -59,3 +59,25 @@ def gtsamPose32Tum(pose3):
     tum_pose[3:6] = quat[1:]
     tum_pose[6] = quat[0]
     return tum_pose
+
+
+def readNoiseModel(noise):
+    """
+    Read noise as GTSAM noise model
+    @param noise: [1 or 6 array/list or gtsam.noiseModel] Noise model
+    @return noise_model: [gtsam.noiseModel] GTSAM noise model
+    """
+    # Read prior noise model
+    # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
+    if type(noise) in [gtsam.noiseModel.Isotropic, gtsam.noiseModel.Diagonal,
+                       gtsam.noiseModel.Unit, gtsam.noiseModel.Gaussian]:
+        return noise
+    if len(noise) == 1:
+        noise_model = \
+            gtsam.noiseModel.Isotropic.Sigma(6, noise[0])
+    elif len(noise) == 6:
+        noise_model = \
+            gtsam.noiseModel.Diagonal.Sigmas(np.array(noise))
+    else:
+        assert(False), "Error: Unexpected noise model type!"
+    return noise_model
