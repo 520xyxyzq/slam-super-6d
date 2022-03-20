@@ -808,8 +808,9 @@ class PseudoLabeler(object):
             gt_cam_dict = readTum(gt_cam)
             # Align origin
             pose_origin = gt_cam_dict[min(gt_cam_dict)]
-            gt_cam_dict = {t: pose_origin.inverse() * p for (t, p)
-                           in gt_cam_dict.items()}
+            gt_cam_dict = {
+                t: pose_origin.inverse() * p for (t, p) in gt_cam_dict.items()
+            }
             gt_cam_array = self.assembleData(gt_cam_dict)
             axes.plot3D(
                 gt_cam_array[:, 1], gt_cam_array[:, 2], gt_cam_array[:, 3],
@@ -818,6 +819,14 @@ class PseudoLabeler(object):
         for ii in range(len(self._dets_)):
             lm_point = self._result_.atPose3(L(ii)).translation()
             gtsam_plot.plot_point3(0, lm_point, "r*")
+
+        # Plot ground truth object pose if any
+        if gt_obj:
+            for kk, go in enumerate(gt_obj):
+                obj_poses = readTum(go)
+                # Ground truth obj pose is the first relative pose
+                gt_obj_pose = obj_poses[min(obj_poses)]
+                gtsam_plot.plot_point3(0, gt_obj_pose.translation(), "k*")
 
         axes.view_init(azim=-90, elev=-45)
         axes.legend()
