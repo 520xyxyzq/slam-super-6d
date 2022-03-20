@@ -47,7 +47,6 @@ class OutlierCount(object):
         # Get critical value of chi2 distribution
         chi2inv = chi2.ppf(chi2_thresh, df=len(stds))
         # Chi2 test
-        print(np.sum(errors**2 / stds**2))
         return np.sum(errors**2 / stds**2) < chi2inv
 
     def count_outliers(self):
@@ -87,4 +86,8 @@ if __name__ == '__main__':
 
     # Count outliers, detections and total frames
     outlier_count = OutlierCount(args.det, args.gt_obj)
-    print(outlier_count.count_outliers())
+    num_out, num_det, num_frames = outlier_count.count_outliers()
+    print(
+        "#Outliers: %d; #Predictions: %d; #Frames: %d"
+        % (num_out, num_det, num_frames)
+    )
