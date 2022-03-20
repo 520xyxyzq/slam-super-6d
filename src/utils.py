@@ -68,7 +68,6 @@ def readNoiseModel(noise):
     @return noise_model: [gtsam.noiseModel] GTSAM noise model
     """
     # Read prior noise model
-    # TODO(ZQ): maybe allow for non-diagonal terms in noise model?
     if type(noise) in [gtsam.noiseModel.Isotropic, gtsam.noiseModel.Diagonal,
                        gtsam.noiseModel.Unit, gtsam.noiseModel.Gaussian]:
         return noise
