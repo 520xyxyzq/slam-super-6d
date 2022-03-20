@@ -635,7 +635,7 @@ class PseudoLabeler(object):
                         for (k, e) in errors.items() if self.isDetFactor(k)}
 
         # Convert the dict{keytuple: 0 or 1} to outlier stamps
-        outliers = [[]] * len(self._dets_)
+        outliers = [[] for _ in range(len(self._dets_))]
         for (k, isout) in outlier_dict.items():
             if not self.isDetFactor(k) or not isout:
                 continue
