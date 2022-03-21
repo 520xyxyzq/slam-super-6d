@@ -16,13 +16,26 @@ class OutlierCount(object):
     def __init__(self, det, gt_obj):
         """
         Read pose predictions and ground truth object poses
-        @param det: [str] Pose predictions (tum format txt)
-        @param gt_obj: [str] Ground truth object poses (tum format txt)
+        @param det: [str or dict{stamp:Pose3}] Object pose predictions
+        @param gt_obj: [str or dict{stamp:Pose3}] Ground truth object poses
         """
-        assert(os.path.isfile(det)), "Error: %s not a file" % det
-        assert(os.path.isfile(gt_obj)), "Error: %s not a file" % gt_obj
-        self._det_ = readTum(det)
-        self._gt_obj_ = readTum(gt_obj)
+        # Read pose predictions
+        if type(det) == dict:
+            self._det_ = det
+        elif type(det) == str:
+            assert(os.path.isfile(det)), "Error: %s not a file" % det
+            self._det_ = readTum(det)
+        else:
+            assert(False), "Error: Unsupported pose prediction format!"
+
+        # Read ground truth object poses
+        if type(gt_obj) == dict:
+            self._gt_obj_ = gt_obj
+        elif type(gt_obj) == str:
+            assert(os.path.isfile(gt_obj)), "Error: %s not a file" % gt_obj
+            self._gt_obj_ = readTum(gt_obj)
+        else:
+            assert(False), "Error: Unsupported pose prediction format!"
 
     def chi2test(self, det, gt, noise_model=[0.1], chi2_thresh=0.95):
         """
@@ -60,7 +73,7 @@ class OutlierCount(object):
         for stamp, det in self._det_.items():
             assert(stamp in self._gt_obj_), \
                 "Error: Stamp mismatch between predictions and ground truth!"
-            if self.chi2test(det, self._gt_obj_[stamp]):
+            if not self.chi2test(det, self._gt_obj_[stamp]):
                 count += 1
         return count, len(self._det_), len(self._gt_obj_)
 
