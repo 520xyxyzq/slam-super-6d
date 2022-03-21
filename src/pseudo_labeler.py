@@ -12,6 +12,7 @@ import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
 from label_eval import LabelEval
+from outlier_count import OutlierCount
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
@@ -1003,6 +1004,21 @@ if __name__ == '__main__':
             obj_dim, intrinsics, target_folder, args.gt_obj,
             verbose=args.verbose, save=args.save
         )
+        # Count outliers in pose predictions based on ground truth obj poses
+        for ii, go in enumerate(args.gt_obj):
+            outlier_count = OutlierCount(args.dets[ii], go)
+            num_out, num_det, num_frames = outlier_count.count_outliers()
+            if args.verbose:
+                print("Obj %d pose prediction stats (based on GT):" % ii)
+                print(
+                    "    #Outliers: %d; #Predictions: %d; #Frames: %d"
+                    % (num_out, num_det, num_frames)
+                )
+                print(
+                    "    %%Outliers: %.1f%%; %%Detected: %.1f%%"
+                    % (num_out*100.0/num_det, num_det*100.0/num_frames)
+                )
+
     # Uncomment to use EVO for error analysis (deprecated)
     # if pl._plabels_[0] and args.gt_obj:
     #     from evo_error import EvoError
