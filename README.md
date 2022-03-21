@@ -20,7 +20,7 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 
 ### Comparison of robust pose graph optimization methods for pseudo-labeling
 
-**Table I**: Column 1-20 are median pseudo label errors (i.e. pixel location errors in projected object 3D bounding boxes computed from optimization results) on YCB video sequences for each test object; Column 21 (#best) is the number of YCB videos on which a method achieves the lowest error. Row 7 (%Detected) is the percentage of successful object detections out of all the image frames. Row 8 (%Outliers) is the percentage of outliers out of all successful predictions.
+**Table I**: Column 1-20 are median pseudo label errors (i.e. pixel location errors in projected object 3D bounding boxes computed from optimization results) on YCB video sequences for each test object; Column 21 (#best) is the number of YCB videos on which a method achieves the lowest error; Row 7 (%Detected) is the percentage of successful object detections out of all the image frames; Row 8 (%Outliers) is the percentage of outliers out of all successful predictions.
 
 |003_cracker_box             |0001    |0004     |0007   |0016    |0017    |0019    |0025    |0029    |0035   |0041    |0044    |0045     |0050    |0054    |0059    |0066    |0070    |0074    |0082     |0085     |#best|
 |---                         |:-:     |:-:      |:-:    |:-:     |:-:     |:-:     |:-:     |:-:     |:-:    |:-:     |:-:     |:-:      |:-:     |:-:     |:-:     |:-:     |:-:     |:-:     |:-:      |:-:      |:-:  |
@@ -30,7 +30,8 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 |Geman-McClure               |**11.5**|168.4    |10.2   |115.0   |48.4    |94.4    |171.4   |179.9   |6.6    |**9.5** |133.3   |169.9    |46.8    |77.1    |131.7   |182.7   |27.0    |102.6   |267.3    |137.5    |2    |
 |cDCE (*Pfeifer et al. 2017*)|28.7    |25.4     |10.5   |32.5    |21.1    |**45.2**|58.9    |**70.5**|7.8    |11.5    |38.0    |128.1    |24.4    |56.7    |55.6    |41.3    |37.7    |60.9    |**238.7**|**114.2**|4    |
 |ACT (Ours)                  |15.7    |12.0     |**9.4**|**12.6**|**20.3**|52.0    |**15.4**|238.3   |6.9    |10.8    |**28.8**|135.4    |**10.4**|18.7    |**21.3**|**22.3**|26.1    |**34.6**|795.2    |180.0    |**9**|
-
+|%Detected                   |56%     |91%      |90%    |56%     |95%     |91%     |85%     |68%     |98%    |97%     |79%     |76%      |96%     |23%     |55%     |61%     |52%     |22%     |12%      |72%      |-     |
+|%Outliers                   |37%     |51%      |11%    |29%     |32%     |76%     |58%     |80%     |4%     |19%     |55%     |95%      |51%     |55%     |73%     |55%     |47%     |67%     |99%      |82%      |-     |
 
 |004_sugar_box               |0001   |0014    |0015    |0020    |0025    |0029    |0033   |0036    |0037    |0043   |0049    |0051   |0054    |0055    |0058   |0060    |0074    |0077    |0085    |0089    |#best |
 |---                         |:-:    |:-:     |:-:     |:-:     |:-:     |:-:     |:-:    |:-:     |:-:     |:-:    |:-:     |:-:    |:-:     |:-:     |:-:    |:-:     |:-:     |:-:     |:-:     |:-:     |:-:   |
@@ -51,6 +52,8 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 |Geman-McClure               |**10.4**|15.3    |11.9    |13.2    |18.9    |15.2    |**9.1**|**14.1**|9.9    |20.0    |16.3    |14.0    |14.4    |**12.3**|13.0    |55.0    |42.7    |320.9    |209.4    |**19.9**|5    |
 |cDCE (*Pfeifer et al. 2017*)|11.5    |16.2    |16.1    |20.5    |17.8    |15.3    |11.2   |18.4    |11.6   |19.2    |16.5    |17.2    |54.5    |13.1    |13.9    |34.9    |**27.2**|385.8    |195.5    |23.4    |1    |
 |ACT (Ours)                  |13.3    |**14.5**|12.8    |**11.3**|19.1    |14.0    |10.4   |21.6    |**9.7**|20.2    |**13.5**|**13.0**|**13.3**|16.0    |13.4    |40.9    |28.9    |385.6    |**192.7**|20.6    |**7**|
+|%Detected                   |93%     |86%     |88%     |60%     |73%     |87%     |71%    |33%     |100%   |99%     |100%    |98%     |49%     |59%     |88%     |15%     |41%     |1%       |7%       |44%     |-     |
+|%Outliers                   |9%      |16%     |26%     |21%     |16%     |10%     |6%     |5%      |8%     |14%     |10%     |16%     |30%     |16%     |4%      |41%     |7%      |100%     |100%     |11%     |-     |
 
 ### Pose estimation and SLAM results on test sequences
 
