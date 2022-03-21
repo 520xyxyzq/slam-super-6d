@@ -20,6 +20,9 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 
 ### Comparison of robust pose graph optimization methods for pseudo-labeling
 
+<details>
+    <summary>Click to expand!</summary>
+
 **Table I**: Column 1-20 are median pseudo label errors (i.e. pixel location errors in projected object 3D bounding boxes computed from optimization results) on YCB video sequences for each test object; Column 21 (#best) is the number of YCB videos on which a method achieves the lowest error; Row 7 (%Detected) is the percentage of successful object detections out of all the image frames; Row 8 (%Outliers) is the percentage of outliers out of all successful predictions.
 
 |003_cracker_box             |0001    |0004     |0007   |0016    |0017    |0019    |0025    |0029    |0035   |0041    |0044    |0045     |0050    |0054    |0059    |0066    |0070    |0074    |0082     |0085     |#best|
@@ -54,6 +57,8 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 |ACT (Ours)                  |13.3    |**14.5**|12.8    |**11.3**|19.1    |14.0    |10.4   |21.6    |**9.7**|20.2    |**13.5**|**13.0**|**13.3**|16.0    |13.4    |40.9    |28.9    |385.6    |**192.7**|20.6    |**7**|
 |%Detected                   |93%     |86%     |88%     |60%     |73%     |87%     |71%    |33%     |100%   |99%     |100%    |98%     |49%     |59%     |88%     |15%     |41%     |1%       |7%       |44%     |-     |
 |%Outliers                   |9%      |16%     |26%     |21%     |16%     |10%     |6%     |5%      |8%     |14%     |10%     |16%     |30%     |16%     |4%      |41%     |7%      |100%     |100%     |11%     |-     |
+
+</details>
 
 ### Pose estimation and SLAM results on test sequences
 
