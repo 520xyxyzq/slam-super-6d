@@ -3,7 +3,7 @@ SLAM-Supported Semi-Supervised Learning for 6D Object Pose Estimation
 
 Check out our [paper](https://arxiv.org/pdf/2203.04424.pdf)!
 
-TLDR: We exploit robust pose graph optimization results to pseudo-label robot-collected RGB images and fine-tune 6D object pose estimators during object-based navigation.
+**TLDR**: We exploit robust pose graph optimization results to pseudo-label robot-collected RGB images and fine-tune 6D object pose estimators during object-based navigation.
 
 ![Method Overview](https://drive.google.com/uc?export=view&id=1sdTURiSuy8IlMDEZNW4DhoKklaWhk4pY)
 
