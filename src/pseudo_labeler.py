@@ -16,7 +16,7 @@ from outlier_count import OutlierCount
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from utils import pose3DictToTum, readNoiseModel, readTum
+from utils import gtsamValuesToTum, pose3DictToTum, readNoiseModel, readTum
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -759,14 +759,18 @@ class PseudoLabeler(object):
 
         axes = fig.gca(projection='3d')
         # Plot optimized camera poses
-        self.plot_traj(axes, self._result_, "b-", 2, "poses")
+        cam_poses_opt = gtsamValuesToTum(self._result_, self._stamps_)
+        axes.plot3D(
+            cam_poses_opt[:, 1], cam_poses_opt[:, 2], cam_poses_opt[:, 3],
+            "b-", linewidth=2, label="Traj. after PGO"
+        )
         # Convert odom to np array and plot
         odom_poses = np.array(
             [pose.translation() for (stamp, pose) in self._odom_.items()]
         )
         axes.plot3D(
             odom_poses[:, 0], odom_poses[:, 1], odom_poses[:, 2], "g--",
-            linewidth=2, label="odom"
+            linewidth=2, label="Odom."
         )
         # Plot ground truth camera trajectory if any
         if gt_cam:
@@ -779,7 +783,7 @@ class PseudoLabeler(object):
             gt_cam_array = pose3DictToTum(gt_cam_dict)
             axes.plot3D(
                 gt_cam_array[:, 1], gt_cam_array[:, 2], gt_cam_array[:, 3],
-                "k--", linewidth=2, label="ground truth"
+                "k--", linewidth=2, label="Ground truth"
             )
         for ii in range(len(self._dets_)):
             lm_point = self._result_.atPose3(L(ii)).translation()
@@ -801,26 +805,6 @@ class PseudoLabeler(object):
             plt.savefig(out + self._det_fnames_[0][:-4] + ".png", dpi=200)
         else:
             plt.show()
-
-    def plot_traj(self, ax, result, linespec="k-", linewidth=2, label="poses"):
-        """
-        Plot camera trajectory
-        @param ax: [matplotlib.pyplot.plot.plot] Plot before
-        @param result: [gtsam.Values] PGO results (w/ landmark included)
-        @param linespec: [string] line color and type
-        @param linewidth: [float] linewidth
-        @param label: [string] legend for this line
-        """
-        positions = np.zeros((len(self._stamps_), 3))
-        for ii, stamp in enumerate(self._stamps_):
-            pose = result.atPose3(X(ii))
-            positions[ii, 0] = pose.x()
-            positions[ii, 1] = pose.y()
-            positions[ii, 2] = pose.z()
-        ax.plot3D(
-            positions[:, 0], positions[:, 1], positions[:, 2], linespec,
-            linewidth=linewidth, label=label
-        )
 
 
 if __name__ == '__main__':
