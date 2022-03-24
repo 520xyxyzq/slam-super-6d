@@ -446,7 +446,9 @@ class PseudoLabeler(object):
                         )
         elif kernel == Kernel.MaxMix:
             # TODO: implement this, use Gaussian reweighting for now
-            print("Warning: reweighting for maxmix not implemented yet!")
+            self.printWarn(
+                "Warning: reweighting for maxmix not implemented yet!"
+            )
             noise_models = \
                 {k: gtsam.noiseModel.Diagonal.Sigmas(lmd * (e**2)**(1/4))
                  for (k, e) in errors.items() if self.isDetFactor(k)}
@@ -1061,6 +1063,7 @@ if __name__ == '__main__':
 
     #     evo_error = EvoError(pl._plabels_, args.gt_obj, target_folder)
     #     evo_error.error(verbose=args.verbose, save=args.save)
+
     # Plot or save the traj and landmarks
     if args.plot or args.save:
         pl.plot(args.gt_cam, args.gt_obj, args.save, target_folder)
