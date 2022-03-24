@@ -485,17 +485,28 @@ class PseudoLabeler(object):
                         )
         return noise_models
 
-    def recomputeDets(self, mode=0, verbose=False):
+    def computePseudoPoses(self, mode=0, scoreThreshPGO=0.5,
+                           scoreThreshInlier=0.2):
         """
-        Recompute object pose detections (i.e. Pseudo labels) from PGO results
-        @param verbose: [bool] Print object out of image message?
-        @param mode: [int] Pseudo labeling mode: SLAM (0) Inlier(1) Hybrid (2)
-        @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo labels
+        Compute pseudo ground truth object poses (wrt camera) based on PGO
+        results and inlier pose predictions
+        @param mode: [int] Pseudo labeling mode: SLAM(0); Inlier(1); Hybrid(2);
+        PoseEval(3)
+        @param scoreThreshPGO: [float] Cosine similarity score threshold for
+        PGO-generated labels
+        @param scoreThreshInlier: [float] Cosine similarity score threshold for
+        pseudo labels derived from inlier predictions
+
+        NOTE: scoreThreshPGO > scoreThreshInlier since PGO generated labels are
+        more likely to misalign with images
+        @return _plabels_: [list of dict] [{stamp: gtsam.Pose3}] Pseudo ground
+        truth object poses
         """
         self._plabels_ = []
-        self.hybrid_count = 0
+        # Number of hybrid pseudo labels generated from PGO
+        self.numHybridPGO = 0
         # For each object
-        for ii in range(len(self._dets_)):
+        for ii, dets in enumerate(self._dets_):
             lm_pose = self._result_.atPose3(L(ii))
             obj_dets = {}
             # Recompute relative obj pose at each time step
@@ -511,16 +522,15 @@ class PseudoLabeler(object):
                 if mode == LabelingMode.SLAM:
                     obj_dets[stamp] = rel_obj_pose
                 elif mode == LabelingMode.Inlier:
-                    if stamp not in self._dets_[ii]:
+                    if stamp not in dets:
                         continue
                     if stamp not in self._outliers_[ii]:
-                        obj_dets[stamp] = self._dets_[ii][stamp]
+                        obj_dets[stamp] = dets[stamp]
                 elif mode == LabelingMode.Hybrid:
                     # For hard examples, use SLAM result if cos_score > thresh
-                    if stamp not in self._dets_[ii] or \
-                            stamp in self._outliers_[ii]:
+                    if stamp not in dets or stamp in self._outliers_[ii]:
                         score = self._pose_eval_.simScore(
-                            jj, rel_obj_pose, 0.8
+                            jj, rel_obj_pose, scoreThreshPGO
                         )
                         if score:
                             # if verbose:
@@ -531,10 +541,10 @@ class PseudoLabeler(object):
                     # For inlier detections, use SLAM result if score higher
                     else:
                         score = self._pose_eval_.simScore(
-                            jj, rel_obj_pose, 0.8
+                            jj, rel_obj_pose, scoreThreshPGO
                         )
                         score_in = self._pose_eval_.simScore(
-                            jj, self._dets_[ii][stamp], 0.3
+                            jj, dets[stamp], scoreThreshInlier
                         )
                         # If max(score, score_inlier) < thresh, don't label
                         if not score_in and not score:
@@ -543,18 +553,25 @@ class PseudoLabeler(object):
                         # score < thresh < score_inlier
                         # OR score_inlier > max(thresh, score)
                         if score_in and (not score or score_in > score):
-                            obj_dets[stamp] = self._dets_[ii][stamp]
+                            obj_dets[stamp] = dets[stamp]
                         else:
+                            # Uncomment to print score values
+                            # if score_in:
+                            #     print(
+                            #         "SLAM score %.2f > Inlier score %.2f" %
+                            #         (score, score_in)
+                            #     )
                             obj_dets[stamp] = rel_obj_pose
-                            self.hybrid_count += 1
+                            self.numHybridPGO += 1
                 elif mode == LabelingMode.PoseEval:
-                    if stamp not in self._dets_[ii]:
+                    if stamp not in dets:
                         continue
+                    # NOTE: 0.5 was used in Deng et al. 2020
                     score = self._pose_eval_.simScore(
-                        jj, self._dets_[ii][stamp], 0.5
+                        jj, dets[stamp], 0.5
                     )
                     if score:
-                        obj_dets[stamp] = self._dets_[ii][stamp]
+                        obj_dets[stamp] = dets[stamp]
                 else:
                     assert(False), "Error: Unknown pseudo labeling mode!"
             self._plabels_.append(obj_dets)
@@ -562,6 +579,10 @@ class PseudoLabeler(object):
     def isInImage(self, rel_obj_pose):
         """
         Check if the object (center) is in the image
+        NOTE: Function no longer in use since PoseEval can do the same job
+        and inlier dets naturally guarantee objs in image;
+        NOTE: Only case we need this is for SLAM labeling mode
+        but at least for now we don't do direct PGO-labeling
         TODO(Zq): Handle situations where obj origin is not at center
         @param rel_obj_pose: [gtsam.pose] Relative object pose
         @return isInImage: [bool] Whether object is in image
@@ -610,15 +631,26 @@ class PseudoLabeler(object):
         self._outliers_ = outliers
 
     def saveData(self, out, img_dim, intrinsics, det_std=[0.1], mode=0,
-                 pose_eval=None, verbose=False):
+                 pose_eval=None, scoreThreshPGO=0.5, scoreThreshInlier=0.2,
+                 detRateThresh=0.05, outlierRateThresh=0.2, verbose=False):
         """
         Save data (pseudo labels & hard examples' stamps) to target folder
         @param out: [string] Target folder to save results
         @param img_dim: [2-list] Image dimension [width, height]
         @param intrinsics: [5-list] Camera intrinsics (fx, fy, cx, cy, s)
         @param det_std: [array, noiseModel] Detection noise stds for chi2 test
-        @param mode: [int] Pseudo labeling mode: SLAM v.s. Inlier v.s. Hybrid
+        @param mode: [int] Pseudo labeling mode: SLAM(0) Inlier(1) Hybrid(2)
+        PoseEval(3)
         @param pose_eval: [PoseEval or None] Pose evaluation module
+        @param scoreThreshPGO: [float] Cosine similarity score threshold for
+        PGO-generated labels
+        @param scoreThreshInlier: [float] Cosine similarity score threshold for
+        inlier predicts
+
+        NOTE: scoreThreshPGO > scoreThreshInlier since PGO generated labels are
+        more likely to misalign with images
+        @param detRateThresh: [float] If %Detected < threshold, don't label seq
+        @param outlierRateTresh: [float] %Outliers > threshold, don't label seq
         @param verbose: [bool] Print object not in image msg?
         """
         self._img_dim_ = img_dim
@@ -638,7 +670,7 @@ class PseudoLabeler(object):
         errors = self.getFactorErrors(self._fg_, self._result_)
         self.labelOutliers(errors, det_std)
         # Recompute obj pose detections
-        self.recomputeDets(mode, verbose)
+        self.computePseudoPoses(mode, scoreThreshPGO, scoreThreshInlier)
         for ii, plabel in enumerate(self._plabels_):
             if len(plabel) == 0:
                 self.printWarn(
@@ -656,13 +688,13 @@ class PseudoLabeler(object):
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
 
-            # numFrames = len(self._stamps_)
+            numFrames = len(self._stamps_)
             numDets = len(self._dets_[ii])
             numOutliers = len(self._outliers_[ii])
             # Save only when #dets > 5% #stamps and #outliers < 20% #dets
             # Or in PoseEval labeling mode
-            if len(self._dets_[ii]) > 0.05 * len(self._stamps_) \
-                    and len(self._outliers_[ii]) < 0.2 * len(self._dets_[ii]) \
+            if numDets > detRateThresh * numFrames \
+                    and numOutliers < outlierRateThresh * numDets \
                     or mode == LabelingMode.PoseEval:
                 np.savetxt(
                     out + out_fname[:-4] + "_obj" + str(ii) + out_fname[-4:],
@@ -678,8 +710,8 @@ class PseudoLabeler(object):
                         out + out_fname[:-4] + "_obj" + str(ii) + "_stats" +
                         out_fname[-4:],
                         [[int(out_fname[:4]), ii,
-                          len(plabel) - hard_egs.shape[0] - self.hybrid_count,
-                          self.hybrid_count, hard_egs.shape[0]]], fmt="%d"
+                          len(plabel) - hard_egs.shape[0] - self.numHybridPGO,
+                          self.numHybridPGO, hard_egs.shape[0]]], fmt="%d"
                     )
                 if verbose:
                     print("Data saved to %s!" % out)
@@ -825,7 +857,7 @@ if __name__ == '__main__':
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
         default=[root + "/experiments/ycbv/dets/results/" +
-                 "004_sugar_box_16k/0001_ycb_poses.txt"]
+                 "010_potted_meat_can_16k/0001.txt"]
     )
     parser.add_argument(
         "--prior_noise", "-pn", nargs="+", type=float, default=[0.01],
@@ -873,9 +905,8 @@ if __name__ == '__main__':
         help="(Optional) Ground truth obj poses for error analysis"
     )
     parser.add_argument(
-        "--lmd", "-l", type=float, default=100,
-        help="Regularization coefficient for the joint optimization" +
-        "(We in general recommand a large value, e.g. lambda > 100)"
+        "--lmd", "-l", type=float, default=10,
+        help="Regularization coefficient for the joint optimization"
     )
     parser.add_argument(
         "--joint", "-j", action="store_true",
@@ -883,7 +914,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--mode", "-m", type=int, default=0,
-        help="Pseudo labeling mode: SLAM (0), Inlier (1), Hybrid (2)."
+        help="Pseudo labeling mode: SLAM(0); Inlier(1); Hybrid(2); PoseEval(3)"
     )
     parser.add_argument(
         "--imgs", "-i", type=str, help="Path to images (with extensions)",
@@ -900,6 +931,22 @@ if __name__ == '__main__':
     parser.add_argument(
         "--codebook", "-c", type=str, help="Path to the codebook folder",
         default=os.path.dirname(os.path.realpath(__file__)) + "/codebooks/"
+    )
+    parser.add_argument(
+        "--spgo", "-sp", type=float, default=0.5,
+        help="Cosine similarity score threshold for PGO-generated labels"
+    )
+    parser.add_argument(
+        "--sin", "-si", type=float, default=0.2,
+        help="Cosine similarity score threshold for labels from inliers"
+    )
+    parser.add_argument(
+        "--detthresh", "-dt", type=float, default=0.05,
+        help="%Detected threshold, below which a seq is not pseudo labeled"
+    )
+    parser.add_argument(
+        "--outthresh", "-ot", type=float, default=0.2,
+        help="%Outlier threshold, above which a seq is not labeled"
     )
     parser.add_argument(
         "--ycb_json", type=str, help="Path to the _ycb_original.json file",
@@ -972,7 +1019,9 @@ if __name__ == '__main__':
 
     pl.saveData(
         target_folder, args.img_dim, intrinsics, det_std=args.det_noise,
-        mode=args.mode, pose_eval=pose_eval, verbose=args.verbose
+        mode=args.mode, pose_eval=pose_eval, scoreThreshPGO=args.spgo,
+        scoreThreshInlier=args.sin, detRateThresh=args.detthresh,
+        outlierRateThresh=args.outthresh, verbose=args.verbose
     )
 
     if args.gt_obj:
