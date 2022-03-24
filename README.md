@@ -23,7 +23,7 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 <details>
     <summary>Click to expand!</summary>
 
-**Table I**: Column 1-20 are median pseudo label errors (i.e. pixel location errors in projected object 3D bounding boxes computed from optimization results) on YCB video sequences for each test object; Column 21 (#best) is the number of YCB videos on which a method achieves the lowest error; Row 7 (%Detected) is the percentage of successful object detections out of all the image frames; Row 8 (%Outliers) is the percentage of outliers out of all successful predictions.
+**Table I**: Comparison of robust PGO methods via pseudo label accuracy on YCB-v sequences (training + testing). Column 1-20 are median pseudo label errors (i.e. pixel location errors in projected object 3D bounding boxes computed from optimization results) on YCB video sequences for each test object; Column 21 (#best) is the number of YCB videos on which a method achieves the lowest error; The statistics of DOPE pose predictions are also reported: Row 7 (%Detected) is the percentage of successful object detections out of all the image frames; Row 8 (%Outliers) is the percentage of outliers out of all successful predictions.
 
 |003_cracker_box             |0001    |0004     |0007   |0016    |0017    |0019    |0025    |0029    |0035   |0041    |0044    |0045     |0050    |0054    |0059    |0066    |0070    |0074    |0082     |0085     |#best|
 |---                         |:-:     |:-:      |:-:    |:-:     |:-:     |:-:     |:-:     |:-:     |:-:    |:-:     |:-:     |:-:      |:-:     |:-:     |:-:     |:-:     |:-:     |:-:     |:-:      |:-:      |:-:  |

@@ -75,8 +75,7 @@ class PseudoLabeler(object):
         for ll, detf in enumerate(det_files):
             det = readTum(detf)
             if len(det) == 0:
-                print('\033[93m' + "Warning: no detection for object %d" % ll
-                      + '\033[0m')
+                self.printWarn("Warning: no detection for object %d" % ll)
                 continue
             self._dets_.append(det)
             det_fname = os.path.basename(detf)
@@ -279,7 +278,7 @@ class PseudoLabeler(object):
                     rel_tol=1e-2, max_iter=20, verbose=False):
         """
         Jointly optimize SLAM variables and detection noise models by
-        alternative minimization
+        alternating minimization
         @param prior_noise: [1 or 6-array] Prior noise model
         @param odom_noise: [1 or 6-array] Camera odom noise model
         @param det_noise: [1 or 6-array] INITIAL detection noise model
@@ -366,9 +365,9 @@ class PseudoLabeler(object):
 
         # Log stopping reason
         if prev_error < error and verbose:
-            print('\033[93m' +
-                  "Warning: Stopping iterations because error increased" +
-                  '\033[0m')
+            self.printWarn(
+                "Warning: Stopping iterations because error increased"
+            )
         if error <= abs_tol and verbose:
             print("Converged! Absolute error %.6f < %.6f" % (error, abs_tol))
         if prev_error > error and rel_err <= rel_tol and verbose:
@@ -467,9 +466,9 @@ class PseudoLabeler(object):
         else:
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
-            print('\033[93m' +
-                  "Warning: No convergence guarantee if reweight w/ kernels" +
-                  '\033[0m')
+            self.printWarn(
+                "Warning: No convergence guarantee if reweight w/ kernels"
+            )
             noise_models = {}
             for (k, e) in errors.items():
                 if self.isDetFactor(k):
@@ -642,10 +641,10 @@ class PseudoLabeler(object):
         self.recomputeDets(mode, verbose)
         for ii, plabel in enumerate(self._plabels_):
             if len(plabel) == 0:
-                print('\033[93m' +
-                      "WARN: Obj %s data not saved, no valid pseudo label"
-                      % str(ii) + '\033[0m'
-                      )
+                self.printWarn(
+                    "WARN: Obj %s data not saved, no valid pseudo label"
+                    % str(ii)
+                )
                 continue
             # Save pseudo labels
             data = pose3DictToTum(plabel)
@@ -657,6 +656,9 @@ class PseudoLabeler(object):
             hard_egs = sorted(fp + fn)
             hard_egs = np.array([hard_egs]).T
 
+            # numFrames = len(self._stamps_)
+            numDets = len(self._dets_[ii])
+            numOutliers = len(self._outliers_[ii])
             # Save only when #dets > 5% #stamps and #outliers < 20% #dets
             # Or in PoseEval labeling mode
             if len(self._dets_[ii]) > 0.05 * len(self._stamps_) \
@@ -682,11 +684,9 @@ class PseudoLabeler(object):
                 if verbose:
                     print("Data saved to %s!" % out)
             else:
-                print(
-                    '\033[93m' +
+                self.printWarn(
                     "WARN: Obj %d labels not saved!! #Dets: %d; #Outliers: %d"
-                    % (ii, len(self._dets_[ii]), len(self._outliers_[ii])) +
-                    '\033[0m'
+                    % (ii, numDets, numOutliers)
                 )
 
     def labelError(self, dim, intrinsics, out, gt_dets=None, verbose=False,
@@ -702,20 +702,16 @@ class PseudoLabeler(object):
         assert(hasattr(self, "_plabels_")), \
             "Error: No pseudo labels yet, generate data before error analysis"
         if gt_dets is None:
-            print(
-                '\033[93m' +
+            self.printWarn(
                 "WARN: Ground truth det files not passed, errors not computed"
-                '\033[0m'
             )
             return
         assert(len(gt_dets) == len(self._dets_)), \
             "Error: #Ground truth detection files != #detection files"
         for ii, gt_det in enumerate(gt_dets):
             if len(self._plabels_[ii]) == 0:
-                print(
-                    '\033[93m' +
+                self.printWarn(
                     "WARN: error not computed since pseudo label empty"
-                    '\033[0m'
                 )
                 continue
             label_eval = LabelEval(self._plabels_[ii], gt_det, dim, intrinsics)
@@ -733,6 +729,13 @@ class PseudoLabeler(object):
                     out_fname, [[int(seq), ii, mean, median, std]],
                     fmt=["%d"]*2 + ["%.2f"]*3
                 )
+
+    def printWarn(self, msg):
+        """
+        Print warning msg in yellow
+        @param msg: [str] msg to print
+        """
+        print('\033[93m' + msg + '\033[0m')
 
     def plot(self, gt_cam=None, gt_obj=None, save=False, out=None):
         """
