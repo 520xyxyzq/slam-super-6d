@@ -36,13 +36,16 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 
 
 ## Results and Files
+
+We save odometry and object pose files following the [TUM](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats) format. Note that DOPE uses a different coordinate system for YCB objects, see [here](https://research.nvidia.com/sites/default/files/pubs/2018-06_Falling-Things/readme_0.txt) for details.
+
 - Odometry:
     - odom/results/<ycb_seq_id>.txt: The camera odometry at each time stamp
     - odom/ground_truth/<ycb_seq_id>.txt: The ground truth camera trajectory
     - Coordinate system: camera convention (z-out, y-right, x-down)
 
 - Inference:
-    - inference/<obj_name>/<labeling_mode>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence (all 0's if no detection)
+    - inference/<obj_name>/<training_data>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence (all 0's if no detection)
     - inference/<obj_name>/ground_truth/<ycb_seq_id>_ycb_gt.txt: Ground truth object poses
     - Coordinate system: camera convention (z-out, y-right, x-down)
 
