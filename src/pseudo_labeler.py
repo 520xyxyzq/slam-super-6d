@@ -858,8 +858,8 @@ if __name__ == '__main__':
     parser.add_argument(
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
-        default=[root + "/experiments/ycbv/dets/results/" +
-                 "010_potted_meat_can_16k/0001.txt"]
+        default=[root + "/experiments/ycbv/inference/" +
+                 "010_potted_meat_can_16k/Initial/0001.txt"]
     )
     parser.add_argument(
         "--prior_noise", "-pn", nargs="+", type=float, default=[0.01],

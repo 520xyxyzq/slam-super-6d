@@ -87,13 +87,13 @@ if __name__ == '__main__':
         "--det", "-d", type=str,
         help="Object pose predictions (tum format txt)",
         default=root +
-        "/experiments/ycbv/dets/results/004_sugar_box_16k/0001.txt"
+        "/experiments/ycbv/inference/004_sugar_box_16k/Initial/0001.txt"
     )
     parser.add_argument(
         "--gt_obj", "-go", type=str,
         help="Ground truth obj poses (tum format txt)",
-        default=root + "/experiments/ycbv/dets/ground_truth/" +
-        "004_sugar_box_16k/0001_ycb_gt.txt"
+        default=root + "/experiments/ycbv/inference/" +
+        "004_sugar_box_16k/ground_truth/0001_ycb_gt.txt"
     )
     args = parser.parse_args()
 

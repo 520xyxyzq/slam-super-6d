@@ -156,12 +156,10 @@ if __name__ == "__main__":
             # root + "/0049/0049_010_after_Gau.txt",
             root + "/0049/0049_004_before.txt",
             root + "/0049/0049_010_before.txt",
-            os.path.dirname(os.path.dirname(root)) +
-            "/experiments/ycbv/dets/ground_truth" +
-            "/004_sugar_box_16k/0049_ycb_gt.txt",
-            os.path.dirname(os.path.dirname(root)) +
-            "/experiments/ycbv/dets/ground_truth" +
-            "/010_potted_meat_can_16k/0049_ycb_gt.txt",
+            os.path.dirname(os.path.dirname(root)) + "/experiments/ycbv/"
+            "inference/004_sugar_box_16k/ground_truth/0049_ycb_gt.txt",
+            os.path.dirname(os.path.dirname(root)) + "/experiments/ycbv/" +
+            "inference/010_potted_meat_can_16k/ground_truth/0049_ycb_gt.txt"
         ]
     )
     parser.add_argument(

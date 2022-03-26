@@ -45,7 +45,7 @@ We save odometry and object pose files following the [TUM](https://vision.in.tum
     - Coordinate system: camera convention (z-out, y-right, x-down)
 
 - Inference:
-    - inference/<obj_name>/<training_data>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence (all 0's if no detection)
+    - inference/<obj_name>/<training_data>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence
     - inference/<obj_name>/ground_truth/<ycb_seq_id>_ycb_gt.txt: Ground truth object poses
     - Coordinate system: camera convention (z-out, y-right, x-down)
     - Missed predictions are saved as all-zeros lines
