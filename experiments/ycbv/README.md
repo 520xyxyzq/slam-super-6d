@@ -22,7 +22,7 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 
 - Pseudo-labeling: Generate pseudo-labeled data:
     ```
-    ./generate_labels <obj_name> <inference_results>.txt <label_output_dir> <ycbv_data_dir>
+    ./generate_labels <obj_name> <inference_result_dir> <labeling_mode> <label_output_dir> <ycbv_data_dir>
     ./generate_data <obj_class_name> <label_output_dir> *obj0.txt 1 <ycbv_data_dir> <data_save_dir>
     ```
     - Play with the parameters (in [pseudo_labeler.py](../../src/pseudo_labeler.py)) to get better performance, e.g. optimizer, labeling mode, etc.
@@ -37,7 +37,7 @@ We leverage the consistent state estimates to pseudo-label YCB-v training images
 
 ## Results and Files
 
-We save odometry and object pose files following the [TUM](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats) format. Note that DOPE uses a different coordinate system for YCB objects, see [here](https://research.nvidia.com/sites/default/files/pubs/2018-06_Falling-Things/readme_0.txt) for details.
+We save odometry and object pose files following the [TUM](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats) format. **Note that DOPE uses a different coordinate system** for YCB objects, see [here](https://research.nvidia.com/sites/default/files/pubs/2018-06_Falling-Things/readme_0.txt) for details.
 
 - Odometry:
     - odom/results/<ycb_seq_id>.txt: The camera odometry at each time stamp
@@ -48,6 +48,7 @@ We save odometry and object pose files following the [TUM](https://vision.in.tum
     - inference/<obj_name>/<training_data>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence (all 0's if no detection)
     - inference/<obj_name>/ground_truth/<ycb_seq_id>_ycb_gt.txt: Ground truth object poses
     - Coordinate system: camera convention (z-out, y-right, x-down)
+    - Missed predictions are saved as all-zeros lines
 
 - Pseudo labels:
     - pseudo_labels/<obj_name>/<labeling_mode>/<ycb_seq_id>.txt: Pseudo ground truth object poses
