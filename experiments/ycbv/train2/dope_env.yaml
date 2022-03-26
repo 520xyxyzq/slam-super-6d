@@ -7,7 +7,7 @@ dependencies:
   - gxx_linux-64
   - pytorch
   - torchvision
-  - cudatoolkit
+  - cudatoolkit=11.3.0
   - git-lfs
   - ffmpeg
   - git
