@@ -280,14 +280,14 @@ def objData2Dict(obj, ycb_json):
 # TODO(ziqi): add a global settings file and make fps a global param
 
 
-def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
+def main(obj, txt, imgs, ycb_json, out, hard=None, new=False,
          intrinsics=[1066.778, 1067.487, 312.9869, 241.3109, 0],
          width=640, height=480, fps=10.0):
     """
     Save DOPE training data to target folder
     @param obj: [str] Object name
     @param txt: [str] path to .txt file (tum format) with object poses
-    @param ycb: [str] path to ycb img folder
+    @param imgs: [str] Path to imgs to be labeled using * (e.g. .../*.png)
     @param ycb_json: [str] json file containing all ycb objects' data
     @param out: [str] target folder to save the training data
     @param hard: [str] path to .txt file with hard examples' stamps
@@ -297,8 +297,9 @@ def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
     @param height: [int] img height
     @param fps: [float] Sequence fps
     """
-    # Get names of all the imgs in ycb folder
-    img_fnames = sorted(glob.glob(ycb + "*-color.png"))
+    # Get names of all the imgs to be labeled
+    img_fnames = sorted(glob.glob(imgs))
+    assert (len(img_fnames) > 0), "Error: %s not files or don't exist" % imgs
     # Get all the relative object poses
     indices, rel_trans, rel_quat = read_poses(txt)
     # Sanity check
@@ -354,6 +355,7 @@ def main(obj, txt, ycb, ycb_json, out, hard=None, new=False,
             json.dump(data_dict, fp, indent=4, sort_keys=False)
 
     # Duplicate hard examples
+    # TODO: Consider other approach to emphasize hard examples
     if hard:
         assert(os.path.isfile(hard)), "Error: %s not a file" % hard
         hard_stamps = np.loadtxt(hard)
@@ -459,10 +461,6 @@ if __name__ == "__main__":
         "/_ycb_original.json"
     )
     parser.add_argument(
-        "--img", type=str, help="Training image name (with extension)",
-        default="*-color.png",
-    )
-    parser.add_argument(
         "--intrinsics", type=float, nargs=5,
         help="Camera intrinsics: fx, fy, cx, cy, s",
         default=[1066.778, 1067.487, 312.9869, 241.3109, 0]
@@ -480,6 +478,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ycb_folder = args.ycb if args.ycb[-1] == "/" else args.ycb + "/"
     ycb_folder = ycb_folder + args.seq + "/"
+    # NOTE: YCB-v img file extension is hard-coded here
+    ycb_imgs = ycb_folder + "*-color.png"
     target_folder = args.out if args.out[-1] == "/" else args.out + "/"
     # If intrinsics not passed in but ycb seq number < 60, use default
     # If intrinsics not passed in but ycb seq number >= 60, use 2nd default
@@ -494,7 +494,7 @@ if __name__ == "__main__":
         intrinsics = args.intrinsics
 
     main(
-        args.obj, args.txt, ycb_folder, args.ycb_json, target_folder,
+        args.obj, args.txt, ycb_imgs, args.ycb_json, target_folder,
         hard=args.hard, new=args.new, intrinsics=intrinsics, width=args.width,
         height=args.height, fps=args.fps
     )

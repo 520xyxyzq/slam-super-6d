@@ -1,0 +1,20 @@
+image_width: 640
+image_height: 480
+camera_name: dope_webcam_0
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1077.836, 0, 323.7872, 0, 1078.189, 279.6921, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.03279146, -0.08454684, 0, 0, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1077.836, 0, 323.7872, 0, 0, 1078.189, 279.6921, 0, 0, 0, 1, 0]

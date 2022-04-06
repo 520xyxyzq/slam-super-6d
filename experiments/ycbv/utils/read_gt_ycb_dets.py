@@ -104,7 +104,7 @@ if __name__ == "__main__":
         type=str,
         help="Directory to save the GT detection txts, no need for obj name!",
         default=os.path.dirname(os.path.dirname(os.path.realpath(__file__))) +
-        "/dets/ground_truth/"
+        "/inference/004_sugar_box_16k/ground_truth/"
     )
     # NOTE: There should be no need to modify the following params
     parser.add_argument(

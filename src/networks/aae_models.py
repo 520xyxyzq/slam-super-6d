@@ -18,8 +18,8 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import torch.optim as optim
 import torch.utils.data
-from torchvision.ops import RoIAlign
 from torch.autograd import Variable
+from torchvision.ops import RoIAlign
 from transforms3d.quaternions import *
 
 
@@ -328,10 +328,10 @@ class AAE(nn.Module):
     def __init__(self, object_names, modality='rgbd', capacity=1, code_dim=128, model_path=None):
         super(AAE, self).__init__()
         # dir
-        if not os.path.exists('./checkpoints'):
-            os.mkdir('./checkpoints')
+        # if not os.path.exists('./checkpoints'):
+        #     os.mkdir('./checkpoints')
 
-        self.model_dir = './checkpoints'
+        # self.model_dir = './checkpoints'
 
         self.object_names = object_names
         self.code_dim = code_dim

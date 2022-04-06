@@ -148,8 +148,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--gt", "-g", type=str, help="Ground truth object (relative) poses",
-        default=root + "/experiments/ycbv/dets/ground_truth" +
-        "/003_cracker_box_16k/0007_ycb_gt.txt"
+        default=root + "/experiments/ycbv/inference/" +
+        "/003_cracker_box_16k/ground_truth/0007_ycb_gt.txt"
     )
     parser.add_argument(
         "--intrinsics", "-in", type=float, nargs=5,

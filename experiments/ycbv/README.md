@@ -1,37 +1,58 @@
 # YCB video experiment
-The automated process and results of running RGBD ORB-SLAM3 (in `odom`) and NVIDIA DOPE (in `dets`) on YCB videos
-
-## Dependencies
-- [evo](https://github.com/MichaelGrupp/evo)
-- [OpenCV](https://github.com/opencv/opencv)
-- [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) (optional, if you want to rerun the experiment)
-- [DOPE](https://github.com/NVlabs/Deep_Object_Pose) (optional, if you want to rerun the experiment)
+We combine [DOPE](https://github.com/NVlabs/Deep_Object_Pose) pose predictions with [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) camera odometry to build per-video object-level world representations.
+We leverage the consistent state estimates to pseudo-label YCB-v training images and fine-tune the DOPE estimator for selected YCB objects.
 
 ## How to run the experiments
-- Run ORB-SLAM3 on YCB videos
-`./ycb_orbslam.sh $path/to/test/folder $path/to/ycb-v/data $path/to/ORB_SLAM3`
-(This process could take ~6 hours)
+- [Odometry](odom/): Run RGBD ORB-SLAM3 on YCB videos (~6 hours for 92 seqs)
 
-- Note: We disabled ORBSLAM's loop closing module following the instructions of this
-[issue](https://github.com/raulmur/ORB_SLAM2/issues/256)
+    ```
+    cd odom
+    ./ycb_orbslam.sh ./ $path/to/ycb-v/data $path/to/ORB_SLAM3
+    ```
+    - We disabled ORBSLAM's loop closing module following the instructions of this [issue](https://github.com/raulmur/ORB_SLAM2/issues/256)
 
-- Note: The ORB-SLAM family has a repeatability [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/71)
+    - The ORB-SLAM family has a repeatability [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/71)
 
-- Run NVIDIA DOPE on YCB videos
-`./ycb_dope.sh $path/to/test/folder $path/to/dope/folder`
-(This process could take ~2 hours)
+- [Inference](inference/): Run NVIDIA DOPE on YCB videos
+    ```
+    ./inference/infer.sh
+    ```
+    - [DOPE estimator models](https://drive.google.com/drive/folders/1DfoA3m_Bm0fW8tOWXGVxi4ETlLEAgmcg) trained from synthetic data.
+    - Remember to change the [config files](inference/config_inference/) and the seq ids in [infer.sh](inference/infer.sh)
 
-## Results
-- ORB-SLAM3:
-    - <ycb_seq_id>_keyframe.txt: Keyframes
-    - <ycb_seq_id>.txt: The entire trajectory
+- Pseudo-labeling: Generate pseudo-labeled data:
+    ```
+    ./generate_labels <obj_name> <inference_result_dir> <labeling_mode> <label_output_dir> <ycbv_data_dir>
+    ./generate_data <obj_class_name> <label_output_dir> *obj0.txt 1 <ycbv_data_dir> <data_save_dir>
+    ```
+    - Play with the parameters (in [pseudo_labeler.py](../../src/pseudo_labeler.py)) to get better performance, e.g. optimizer, labeling mode, etc.
+
+- [Training](train2/): Train or fine-tune the DOPE estimator
+    - TODO: change training script to load data directly from ycbv data folder using label files.
+
+- [Evaluation](evaluation/): Evaluate the pose estimators using metric ADD and ADD-S
+
+- Data Generation: Generate synthetic data using [NVISII](https://github.com/owl-project/NVISII).
+
+
+## Results and Files
+
+We save odometry and object pose files following the [TUM](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats) format. **Note that DOPE uses a different coordinate system** for YCB objects, see [here](https://research.nvidia.com/sites/default/files/pubs/2018-06_Falling-Things/readme_0.txt) for details.
+
+- Odometry:
+    - odom/results/<ycb_seq_id>.txt: The camera odometry at each time stamp
+    - odom/ground_truth/<ycb_seq_id>.txt: The ground truth camera trajectory
     - Coordinate system: camera convention (z-out, y-right, x-down)
 
-- NVIDIA DOPE:
-    - <ycb_seq_id>_ycb_poses: object pose detection at all times in a YCB sequence (all 0's if no detection)
+- Inference:
+    - inference/<obj_name>/<training_data>/<ycb_seq_id>.txt: Object pose prediction at each time stamp in a YCB sequence
+    - inference/<obj_name>/ground_truth/<ycb_seq_id>_ycb_gt.txt: Ground truth object poses
     - Coordinate system: camera convention (z-out, y-right, x-down)
+    - Missed predictions are saved as all-zeros lines
 
-## Files
+- Pseudo labels:
+    - pseudo_labels/<obj_name>/<labeling_mode>/<ycb_seq_id>.txt: Pseudo ground truth object poses
+
 - _ycb_original.json:
     - exported_object_classes: YCB-V object class names
     - fixed_model_transform: Transpose of obj transform to align and center original YCB object coordinate; Note that the unit is [cm]; it is the transformation of the original obj frame wrt the new frame.

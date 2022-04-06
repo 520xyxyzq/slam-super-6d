@@ -23,15 +23,18 @@ def readTum(txt):
     return traj
 
 
-def main(trajs, gt):
+def main(trajs, gt, save=False, out=None):
     """
     Read estimated camera trajs and ground truth, and plot
     @param trajs: [list of strs] camera trajectory files (.txt)
     @param gt: [str] camera ground truth traj file (.txt)
+    @param save: [bool] Save the anim video?
+    @param out: [str] Absolute file name to save the video
     """
     # Make figure
     fig = plt.figure(0)
-    ax = plot.prepare_axis(fig, plot.PlotMode.xyz)
+    # ax = plot.prepare_axis(fig, plot.PlotMode.xyz)
+    ax = fig.add_subplot(projection="3d")
     plt.rcParams.update({'font.family': "Times New Roman", 'font.size': "20"})
     # Read estimated camera trajs
     est_trajs = []
@@ -57,8 +60,8 @@ def main(trajs, gt):
 
     plot.traj(ax, plot.PlotMode.xyz, gt_traj, "--", "k")
     plt.legend(
-        ["Before (Outlier = 38.5%)", "After (Outlier = 4.4%)", "Ground truth"],
-        fontsize=18, facecolor="white"
+        ["LM", "ACT", "Ground truth"],
+        fontsize=18, facecolor="white", loc="upper left"
     )
     # Static transform: original to DOPE coordinate transformation
     static_transform = gtsam.Pose3(
@@ -129,12 +132,48 @@ def main(trajs, gt):
     )
     gtsam_plot.plot_pose3(0, cam_pose * rel_obj_pose * static_transform)
 
+    # Set view angles
     ax.view_init(azim=-80, elev=-143)
+    # Set view distance
     ax.dist = 6.9
     ax.set_axis_off()
     ax.set_facecolor("white")
     plt.tight_layout()
+
+    # Re-specify the axes (poses) line styles and colors
+    lines = fig.get_children()[-1].lines
+    # Re-format GT pose axes
+    for line in lines[-3:]:
+        line.set_color("k")
+        line.set_linestyle("--")
+    # Re-format 2nd axes
+    for line in lines[-6:-3]:
+        line.set_color("r")
+    # Re-format 1st axes
+    for line in lines[-9:-6]:
+        line.set_color("b")
+
     plt.show()
+
+    if save:
+        def init():
+            return fig,
+
+        def ani(elv):
+            # NOTE: tune the functions to get visually pleasing anim motions
+            ax.view_init(azim=-80+elv, elev=-143+(abs(180-elv) - 180)/5)
+            return fig,
+        from matplotlib import animation
+        anim = animation.FuncAnimation(
+            fig, ani, init_func=init, frames=360, interval=1, blit=True
+        )
+        anim.save(out, fps=30, extra_args=['-vcodec', 'libx264'], dpi=300)
+
+        # Uncomment to check the video before saving it
+        # for elv in range(0, 360, 1):
+        #     ax.view_init(azim=-80+elv, elev=-143+(abs(180-elv) - 180)/5)
+        #     plt.draw()
+        #     plt.pause(0.01)
 
 
 if __name__ == "__main__":
@@ -150,12 +189,20 @@ if __name__ == "__main__":
         "--traj", "-t", nargs="+", type=str,
         help="Traj estimate files (.txt)",
         default=[
-            root +
-            "/Supplement/Tab. V/010_potted_meat_can/002/PGO_traj_before.txt",
-            root +
-            "/Supplement/Tab. V/010_potted_meat_can/002/PGO_traj_after.txt"
+            root + "/Supplement/Tab. V/" +
+            "010_potted_meat_can/002/PGO_traj_before_LM.txt",
+            root + "/Supplement/Tab. V/" +
+            "010_potted_meat_can/002/PGO_traj_before.txt"
         ]
+    )
+    parser.add_argument(
+        "--save", "-s", action="store_true",
+        help="Want to save the anim video?"
+    )
+    parser.add_argument(
+        "--out", "-o", help="The absolute video file name",
+        default="/home/ziqi/Desktop/out.mp4"
     )
     args = parser.parse_args()
 
-    main(args.traj, args.gt)
+    main(args.traj, args.gt, args.save, args.out)
