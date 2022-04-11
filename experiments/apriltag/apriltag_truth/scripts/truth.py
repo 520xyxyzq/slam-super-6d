@@ -23,7 +23,7 @@ class TruthEvaluate(object):
             bag_name = rospy.get_param('bag_name', None) + '_gt.txt'
             rospy.loginfo('Bag_name: ' + bag_name)
             obj_type = rospy.get_param('obj_name', None)
-            rospy.loginfo('Obj_type: ' + obj_type)
+            rospy.loginfo('Obj_name: ' + obj_type)
             self.tags = np.array(rospy.get_param('tags', {})[obj_type])
             rospy.loginfo('Obj tags: ' + str(self.tags))
             self.obj_dim = np.array(rospy.get_param(
