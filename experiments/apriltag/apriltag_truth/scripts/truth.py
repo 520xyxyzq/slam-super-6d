@@ -18,28 +18,23 @@ class TruthEvaluate(object):
         self.paper_height = 279.4 * 10**-3
         self.paper_width = 215.9 * 10**-3
 
-        bag_name = rospy.get_param('bag_name', None) + '_gt.txt'
-        obj_type = bag_name[:bag_name.index('_')]
-        assert obj_type in ['cracker', 'spam', 'sugar']
-        if obj_type == 'cracker':
-            # Tags are in order [bottom left, bottom right, middle left, etc.]
-            self.tags = np.array([8, 9, 10, 11, 12, 13])
-            #
-            self.obj_dim = np.array([16.403600692749023,
-                                     21.343700408935547,
-                                     7.179999828338623]) * 10**-2
-        elif obj_type == 'spam':
-            self.tags = np.array([0, 1, 2, 3, 4, 5])
-            self.obj_dim = np.array([10.16469955444336,
-                                     8.354299545288086,
-                                     5.7600998878479]) * 10**-2
-        elif obj_type == 'sugar':
-            self.tags = np.array([14, 15, 16, 17, 18, 19])
-            self.obj_dim = np.array([9.2677001953125,
-                                     17.62529945373535,
-                                     4.513400077819824]) * 10**-2
+        rospy.loginfo("init TruthEvaluate")
+        try:
+            bag_name = rospy.get_param('bag_name', None) + '_gt.txt'
+            rospy.loginfo('Bag_name: ' + bag_name)
+            obj_type = rospy.get_param('obj_name', None)
+            rospy.loginfo('Obj_type: ' + obj_type)
+            self.tags = np.array(rospy.get_param('tags', {})[obj_type])
+            rospy.loginfo('Obj tags: ' + str(self.tags))
+            self.obj_dim = np.array(rospy.get_param(
+                'obj_dim', {})[obj_type]) * 10**-2
+            rospy.loginfo('Obj dim (mm): ' + str(self.obj_dim))
+        except Exception:
+            raise RuntimeError("""Error loading parameters.
+                    Check the config folder and the names.""")
 
-        # apriltag coord system has x right and y up, with (x,y) on the paper)
+        # apriltag coord system has x right and y up
+        # with x-y plane on the paper
         center_dist = self.margin+self.tag_size/2
         x_coords = [center_dist, self.paper_width - center_dist]
         y_coords = [center_dist, self.paper_height/2,
@@ -48,10 +43,8 @@ class TruthEvaluate(object):
             [[x_coords[i], y_coords[j], 0]
                 for j in range(3) for i in range(2)])
 
-        rospy.loginfo("init TruthEvaluate")
-        rospy.loginfo('obj_type: ' + str(obj_type))
-        rospy.loginfo('filename: ' + str(bag_name))
-
+        # Assume that object is centered on the paper
+        # z of obj is just half height of obj
         self.obj_center = np.array(
             [self.paper_width/2, self.paper_height/2, self.obj_dim[1]/2])
         # Relative translations of test object CENTER wrt tags
@@ -164,7 +157,7 @@ class TruthEvaluate(object):
         '''
         rotmat = Rot.from_quat(quat_in).as_dcm()
         # Obj x axis is mapped from apriltag y axis,
-        # obj z axis is mapped from negative apriltag x axis
+        # Obj z axis is mapped from negative apriltag x axis
         trans_matrix = np.array([[0, 0, -1], [1, 0, 0], [0, -1, 0]])
         return Rot.from_dcm(rotmat.dot(trans_matrix)).as_quat()
 

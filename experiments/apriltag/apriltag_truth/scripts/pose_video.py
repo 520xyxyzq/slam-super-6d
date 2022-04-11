@@ -60,6 +60,7 @@ class PoseVideo(object):
             if abs(timestamp - cur_time) < 0.00001:
                 trans = tokens[1:4]
                 rot = tokens[4:]
+                # Draw only if detection exists
                 if rot != [0., 0., 0., 0.]:
                     R = Rot.from_quat(rot)
                     t = np.array(trans)
@@ -84,7 +85,7 @@ class PoseVideo(object):
     def draw_axis(self, img, R, t, K):
         """
         Draw a set of coordinate axes on openCV img.
-        Axes are drawn in BGR order.
+        Axes are drawn in RGB order.
         Input:
             img (openCV image) : image to be modified
             R (scipy quat) : rotation quaternion
@@ -98,11 +99,11 @@ class PoseVideo(object):
                              [0, 0, 0]]).reshape(-1, 3)
         axisPoints, _ = cv2.projectPoints(points, rotV, t, K, (0, 0, 0, 0))
         img = cv2.line(img, tuple(axisPoints[3].ravel()), tuple(
-            axisPoints[0].ravel()), (255, 0, 0), 10)
+            axisPoints[0].ravel()), (0, 0, 255), 3)
         img = cv2.line(img, tuple(axisPoints[3].ravel()), tuple(
             axisPoints[1].ravel()), (0, 255, 0), 3)
         img = cv2.line(img, tuple(axisPoints[3].ravel()), tuple(
-            axisPoints[2].ravel()), (0, 0, 255), 3)
+            axisPoints[2].ravel()), (255, 0, 0), 3)
         return img
 
     def main(self):

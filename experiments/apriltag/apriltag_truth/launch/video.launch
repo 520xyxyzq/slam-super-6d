@@ -6,19 +6,19 @@
     <rosparam param="filtered_output_path" subst_value="True">$(arg filtered_output_path)</rosparam>
 
     <arg name="launch_prefix" default="" />
-    <arg name="node_namespace" default="apriltag_ros_continuous_node" />
+    <arg name="apriltag_node_ns" default="apriltag_ros_continuous_node" />
     <arg name="camera_name" default="/zed2/zed_node/left" />
     <arg name="image_topic" default="image_rect_color" />
 
-    <rosparam command="load" file="$(find apriltag_truth)/config/settings.yaml" ns="$(arg node_namespace)" />
-    <rosparam command="load" file="$(find apriltag_truth)/config/tags.yaml" ns="$(arg node_namespace)" />
+    <rosparam command="load" file="$(find apriltag_truth)/config/apriltag_settings.yaml" ns="$(arg apriltag_node_ns)" />
+    <rosparam command="load" file="$(find apriltag_truth)/config/tags.yaml" ns="$(arg apriltag_node_ns)" />
 
     <node pkg="rosbag" type="play" name="player"  args="--delay=5 --queue=20 -k $(arg bag_full_path)"/>
 
     <node pkg="image_transport" type="republish" name="image_republisher0" required="true" args="compressed in:=$(arg camera_name)/image_rect_color raw out:=$(arg camera_name)/uncompressed _image_transport:=compressed" />
     <node pkg="apriltag_truth" type="pose_video.py" output="screen" name="pose_video"/>
 
-    <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="$(arg node_namespace)" clear_params="true" output="screen" launch-prefix="$(arg launch_prefix)" >
+    <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="$(arg apriltag_node_ns)" clear_params="true" output="screen" launch-prefix="$(arg launch_prefix)" >
         <remap from="image_rect" to="$(arg camera_name)/uncompressed" />
         <remap from="camera_info" to="$(arg camera_name)/camera_info" />
         <param name="publish_tag_detections_image" type="bool" value="true" />
