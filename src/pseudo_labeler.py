@@ -24,10 +24,10 @@ L = gtsam.symbol_shorthand.L
 X = gtsam.symbol_shorthand.X
 
 
-# Robusr kernels to be used in PGO
+# Robust kernels to be used in PGO
 class Kernel(IntEnum):
-    Gauss = 0
-    MaxMix = 1
+    L2 = 0
+    L1 = 1
     Cauchy = 2
     GemanMcClure = 3
     Huber = 4
@@ -167,11 +167,11 @@ class PseudoLabeler(object):
             noise if type(noise) is dict else readNoiseModel(noise)
 
         # Set robust kernel
-        if kernel == Kernel.Gauss:
+        if kernel == Kernel.L2:
             pass
-        elif kernel == Kernel.MaxMix:
-            # TODO: add custom factor
-            pass
+        elif kernel == Kernel.L1:
+            assert(False), "Error: L1 kernel not implemented yet in GTSAM, " +\
+                "but our DCCS optimizer supports L1 kernel"
         elif kernel == Kernel.DCE:
             pass
         elif kernel in [Kernel.Cauchy, Kernel.GemanMcClure, Kernel.Huber,
@@ -430,7 +430,7 @@ class PseudoLabeler(object):
         # TODO(zq): Guard against 0 errors
         assert(len(errors) > 0), "Error: Factor errors empty!"
         assert(hasattr(self, "_outliers_")), "Error: Outliers not labeled!"
-        if kernel == Kernel.Gauss:
+        if kernel == Kernel.L2:
             noise_models = {}
             for (k, e) in errors.items():
                 if self.isDetFactor(k):
@@ -445,14 +445,6 @@ class PseudoLabeler(object):
                         noise_models[k] = gtsam.noiseModel.Diagonal.Sigmas(
                             lmd * (e**2)**(1/4)
                         )
-        elif kernel == Kernel.MaxMix:
-            # TODO: implement this, use Gaussian reweighting for now
-            printWarn(
-                "Warning: reweighting for maxmix not implemented yet!"
-            )
-            noise_models = \
-                {k: gtsam.noiseModel.Diagonal.Sigmas(lmd * (e**2)**(1/4))
-                 for (k, e) in errors.items() if self.isDetFactor(k)}
         elif kernel == Kernel.DCE:
             noise_models = {}
             for (k, e) in errors.items():
