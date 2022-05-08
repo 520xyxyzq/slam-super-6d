@@ -16,7 +16,8 @@ from outlier_count import OutlierCount
 from pose_eval import PoseEval
 from scipy.spatial.transform import Rotation as R
 from scipy.stats.distributions import chi2
-from utils import gtsamValuesToTum, pose3DictToTum, readNoiseModel, readTum
+from utils import (gtsamValuesToTum, pose3DictToTum, printWarn, readNoiseModel,
+                   readTum)
 
 # For GTSAM symbols
 L = gtsam.symbol_shorthand.L
@@ -75,7 +76,7 @@ class PseudoLabeler(object):
         for ll, detf in enumerate(det_files):
             det = readTum(detf)
             if len(det) == 0:
-                self.printWarn("Warning: no detection for object %d" % ll)
+                printWarn("Warning: no detection for object %d" % ll)
                 continue
             self._dets_.append(det)
             det_fname = os.path.basename(detf)
@@ -365,7 +366,7 @@ class PseudoLabeler(object):
 
         # Log stopping reason
         if prev_error < error and verbose:
-            self.printWarn(
+            printWarn(
                 "Warning: Stopping iterations because error increased"
             )
         if error <= abs_tol and verbose:
@@ -446,7 +447,7 @@ class PseudoLabeler(object):
                         )
         elif kernel == Kernel.MaxMix:
             # TODO: implement this, use Gaussian reweighting for now
-            self.printWarn(
+            printWarn(
                 "Warning: reweighting for maxmix not implemented yet!"
             )
             noise_models = \
@@ -468,7 +469,7 @@ class PseudoLabeler(object):
         else:
             # Can we generalize this to robust kernels?
             # Maybe the reweighting process already robustifies the cost func
-            self.printWarn(
+            printWarn(
                 "Warning: No convergence guarantee if reweight w/ kernels"
             )
             noise_models = {}
@@ -675,7 +676,7 @@ class PseudoLabeler(object):
         self.computePseudoPoses(mode, scoreThreshPGO, scoreThreshInlier)
         for ii, plabel in enumerate(self._plabels_):
             if len(plabel) == 0:
-                self.printWarn(
+                printWarn(
                     "WARN: Obj %s data not saved, no valid pseudo label"
                     % str(ii)
                 )
@@ -718,7 +719,7 @@ class PseudoLabeler(object):
                 if verbose:
                     print("Data saved to %s!" % out)
             else:
-                self.printWarn(
+                printWarn(
                     "WARN: Obj %d labels not saved!! #Dets: %d; #Outliers: %d"
                     % (ii, numDets, numOutliers)
                 )
@@ -736,7 +737,7 @@ class PseudoLabeler(object):
         assert(hasattr(self, "_plabels_")), \
             "Error: No pseudo labels yet, generate data before error analysis"
         if gt_dets is None:
-            self.printWarn(
+            printWarn(
                 "WARN: Ground truth det files not passed, errors not computed"
             )
             return
@@ -744,7 +745,7 @@ class PseudoLabeler(object):
             "Error: #Ground truth detection files != #detection files"
         for ii, gt_det in enumerate(gt_dets):
             if len(self._plabels_[ii]) == 0:
-                self.printWarn(
+                printWarn(
                     "WARN: error not computed since pseudo label empty"
                 )
                 continue
@@ -763,13 +764,6 @@ class PseudoLabeler(object):
                     out_fname, [[int(seq), ii, mean, median, std]],
                     fmt=["%d"]*2 + ["%.2f"]*3
                 )
-
-    def printWarn(self, msg):
-        """
-        Print warning msg in yellow
-        @param msg: [str] msg to print
-        """
-        print('\033[93m' + msg + '\033[0m')
 
     def plot(self, gt_cam=None, gt_obj=None, save=False, out=None):
         """
@@ -853,13 +847,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "--odom", "-o", type=str,
         help="Camera odometry file (tum format)",
-        default=root + "/experiments/ycbv/odom/results/0001.txt"
+        default=root + "/experiments/ycbv/odom/results/0002.txt"
     )
     parser.add_argument(
         "--dets", "-d", nargs="+", type=str,
         help="Object detection files (tum format)",
         default=[root + "/experiments/ycbv/inference/" +
-                 "010_potted_meat_can_16k/Initial/0001.txt"]
+                 "010_potted_meat_can_16k/Initial/0002.txt"]
     )
     parser.add_argument(
         "--prior_noise", "-pn", nargs="+", type=float, default=[0.01],
@@ -920,7 +914,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--imgs", "-i", type=str, help="Path to images (with extensions)",
-        default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/0001/*-color.png"
+        default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/0002/*-color.png"
     )
     parser.add_argument(
         "--obj", "-obj", type=str, default="010_potted_meat_can",

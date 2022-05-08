@@ -130,3 +130,11 @@ def readNoiseModel(noise):
     else:
         assert(False), "Error: Unexpected noise model type!"
     return noise_model
+
+
+def printWarn(msg):
+    """
+    Print warning msg in yellow
+    @param msg: [str] msg to print
+    """
+    print('\033[93m' + msg + '\033[0m')
