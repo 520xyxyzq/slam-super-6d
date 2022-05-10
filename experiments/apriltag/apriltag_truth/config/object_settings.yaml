@@ -1,0 +1,9 @@
+# Provide tag and dimension info about objects
+
+# Add objects as entries in dictionary for both settings
+# Key should match obj_type provided in launch file args
+
+# Tags are in order [bottom left, bottom right, middle left, etc.]
+tags: {'cracker': [8,9,10,11,12,13], 'spam': [0, 1, 2, 3, 4, 5], 'sugar': [14, 15, 16, 17, 18, 19]}
+# Object dimensions given in cm
+obj_dim: {'cracker': [16.403600692749023, 21.343700408935547, 7.179999828338623], 'spam': [10.16469955444336, 8.354299545288086, 5.7600998878479], 'sugar': [9.2677001953125, 17.62529945373535, 4.513400077819824]}
