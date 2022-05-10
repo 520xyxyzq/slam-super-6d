@@ -83,8 +83,3 @@ To get started using `pre-commit` with this codebase, from the project repo run:
 pre-commit install
 ```
 Now, each time you `git add` new files and try to `git commit` your code will automatically be run through a variety of linters. You won't be able to commit anything until the linters are happy with your code.
-
-For modules in the `thirdparty` directory, we will not do any linting. If you are adding code in a `thirdparty` directory, you should commit with:
-```
-git commit --no-verify -m "My commit message here...."
-```
