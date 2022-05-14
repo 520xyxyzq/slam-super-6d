@@ -80,11 +80,11 @@ class DCCSOptimizer(object):
         self._verbose_ = verbose
 
         # Make a chi2inv lookup table, calling the function in loop is slow
-        self.chi2inv = dict()
+        self._chi2inv_ = dict()
         for fac in self._factors2rescale_:
             dim = graph.at(fac).dim()
-            if dim not in self.chi2inv:
-                self.chi2inv[dim] = chi2.ppf(0.95, dim)
+            if dim not in self._chi2inv_:
+                self._chi2inv_[dim] = chi2.ppf(0.95, dim)
 
         # Remember factors' initial noise models (std here)
         self._sigmas_ = {
@@ -92,7 +92,7 @@ class DCCSOptimizer(object):
             for fac in self._factors2rescale_
         }
 
-        # Intialize the covariance scaling factors as ones
+        # Intialize the covariance scaling constants as ones
         self._scale_ = {
             fac: np.ones_like(graph.at(fac).noiseModel().sigmas())
             for fac in self._factors2rescale_
@@ -142,7 +142,7 @@ class DCCSOptimizer(object):
         """
         Penalty function (Phi: R+ --> R+) in the joint loss
         Eq (16) in Black and Rangarajan, 1996; Eq (3) in Yang et al., 2020
-        @param scale: [N-array] Scaling factors for covariance components
+        @param scale: [N-array] Scaling constants for covariance components
         @return penalty: [float] Penalty value for a measurement
         """
         # In case factor error is not a 1-D np array
@@ -155,26 +155,6 @@ class DCCSOptimizer(object):
             return 0
         elif self._kernel_ == Kernel.L1:
             return 1/2*np.sum(scale / (self._kernel_param_**2))
-
-    def updateScale(self, whitenedError):
-        """
-        Update the scaling factors for the covariance components of a factor
-        @param whitenedError: [N-array] Whitened factor error vector:
-        r_{kj} / sigma_{kj}
-        @return scale: [N-array] Updated covariance scaling factor
-        """
-        # In case factor error is not a 1-D np array
-        whitenedError = np.array(whitenedError).ravel()
-        # Size of the measurement
-        size = len(whitenedError)
-        assert(size > 0), "Error: Empty factor error vector"
-        if self._kernel_ == Kernel.L2:
-            return np.ones(size)
-        elif self._kernel_ == Kernel.L1:
-            if np.linalg.norm(whitenedError)**2 <= self.chi2inv[size]:
-                return np.abs(self._kernel_param_ * whitenedError)
-            else:
-                return 1e22 * np.ones(size)
 
     def updatePenalty(self):
         """
@@ -195,10 +175,24 @@ class DCCSOptimizer(object):
         assert(hasattr(self, "_result_")), \
             "Error: Need optimization results to rescale"
         for fac in self._factors2rescale_:
+            # Get factor errors
             factor = self._graph_.at(fac)
             unwhitenedError = factor.unwhitenedError(self._result_)
+            # error whitening
             whitenedError = unwhitenedError / self._sigmas_[fac]
-            self._scale_[fac] = self.updateScale(whitenedError)
+
+            # Update the covariance scaling constants based on the errors
+            size = len(whitenedError)  # measurement dim
+            if self._kernel_ == Kernel.L2:
+                self._scale_[fac] = np.ones(size)
+            elif self._kernel_ == Kernel.L1:
+                if np.linalg.norm(whitenedError)**2 <= self._chi2inv_[size]:
+                    self._scale_[fac] = np.abs(
+                        self._kernel_param_ * whitenedError
+                    )
+                else:
+                    self._scale_[fac] = 1e22 * np.ones(size)
+
             # Freeze the penalty value for outliers
             if self._kernel_ in [Kernel.L1]:
                 self._freeze_[fac] = (np.sum(self._scale_[fac]) >= 1e22)
