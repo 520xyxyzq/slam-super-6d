@@ -87,6 +87,7 @@ class DCCSOptimizer(object):
                 self._chi2inv_[dim] = chi2.ppf(0.95, dim)
 
         # Remember factors' initial noise models (std here)
+        # TODO: dessemble the robust noise model or add an assertion
         self._sigmas_ = {
             fac: graph.at(fac).noiseModel().sigmas()
             for fac in self._factors2rescale_
@@ -155,6 +156,10 @@ class DCCSOptimizer(object):
             return 0
         elif self._kernel_ == Kernel.L1:
             return 1/2*np.sum(scale / (self._kernel_param_**2))
+        elif self._kernel_ == Kernel.GemanMcClure:
+            return 1/2*np.sum(
+                (self._kernel_param_ * (1/np.sqrt(scale + 1e-20) - 1)**2)
+            )
 
     def updatePenalty(self):
         """
@@ -192,6 +197,10 @@ class DCCSOptimizer(object):
                     )
                 else:
                     self._scale_[fac] = 1e22 * np.ones(size)
+            elif self._kernel_ == Kernel.GemanMcClure:
+                self._scale_[fac] = (
+                    1 + (whitenedError / self._kernel_param_)**2
+                )**2
 
             # Freeze the penalty value for outliers
             if self._kernel_ in [Kernel.L1]:
@@ -367,3 +376,4 @@ if __name__ == "__main__":
         verbose=args.verbose
     )
     dccs_optimizer.optimize()
+    print(dccs_optimizer._result_)
