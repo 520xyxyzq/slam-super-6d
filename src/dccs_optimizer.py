@@ -127,6 +127,12 @@ class DCCSOptimizer(object):
         self._loss_ = \
             self._graph_.error(init) + sum(self._penalty_.values())
 
+        # Important: initial covariance rescaling based on initial values
+        # We can obtain good initial covariances
+        # to avoid the 1st iteration PGO results ruining good initial values
+        self.rescaleCovariances()
+        self.rebuildGraph()
+
     def readKernelParam(self, kernel, kernel_param):
         """
         Read kernel parameters;
@@ -191,6 +197,8 @@ class DCCSOptimizer(object):
         @return muConverged: [bool] Whether we have recovered the original cost
         """
         assert(self._GNC_), "Error: Calling mu update when GNC is set as False"
+        assert(self._kernel_ in [Kernel.GemanMcClure, Kernel.TLS]), \
+            "Error: No GNC support for kernels other than GM & TLS"
         if self._kernel_ == Kernel.GemanMcClure:
             self._mu_ /= 1.4
             return self._mu_ <= 1.0
@@ -303,6 +311,8 @@ class DCCSOptimizer(object):
                 params = gtsam.LevenbergMarquardtParams()
                 if self._verbose_:
                     params.setVerbosity("ERROR")
+                    params.setAbsoluteErrorTol(min(self._abs_tol_, 1e-5))
+                    params.setRelativeErrorTol(min(self._rel_tol_, 1e-5))
                 self._LM_ = gtsam.LevenbergMarquardtOptimizer(
                     self._graph_, self._result_, params
                 )
