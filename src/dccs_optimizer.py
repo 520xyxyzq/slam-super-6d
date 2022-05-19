@@ -25,12 +25,13 @@ class Kernel(IntEnum):
     Tukey = 5
     Welsch = 6
     DCE = 7  # Pfeifer et al. (2017)
+    TLS = 8
 
 
 class DCCSOptimizer(object):
     def __init__(
         self, graph, init, kernel, kernel_param, factor2rescale,
-        abs_tol=1e-10, rel_tol=2e-2, max_iter=20, verbose=False
+        GNC=False, abs_tol=1e-10, rel_tol=2e-2, max_iter=20, verbose=False
     ):
         """
         Read in the graph and initialize the factor graph.
@@ -74,17 +75,19 @@ class DCCSOptimizer(object):
         self._kernel_ = kernel
         self._kernel_param_ = self.readKernelParam(kernel, kernel_param)
         self._factors2rescale_ = factor2rescale
+        self._GNC_ = GNC
         self._abs_tol_ = abs_tol
         self._rel_tol_ = rel_tol
         self._max_iter_ = max_iter
         self._verbose_ = verbose
 
         # Make a chi2inv lookup table, calling the function in loop is slow
-        self._chi2inv_ = dict()
-        for fac in self._factors2rescale_:
-            dim = graph.at(fac).dim()
-            if dim not in self._chi2inv_:
-                self._chi2inv_[dim] = chi2.ppf(0.95, dim)
+        if self._kernel_ == Kernel.L1:
+            self._chi2inv_ = dict()
+            for fac in self._factors2rescale_:
+                dim = graph.at(fac).dim()
+                if dim not in self._chi2inv_:
+                    self._chi2inv_[dim] = chi2.ppf(0.95, dim)
 
         # Remember factors' initial noise models (std here)
         # TODO: dessemble the robust noise model or add an assertion
@@ -99,6 +102,19 @@ class DCCSOptimizer(object):
             for fac in self._factors2rescale_
         }
 
+        # Initialize mu
+        if GNC:
+            r2max = 0
+            for fac in self._factors2rescale_:
+                error = self._graph_.at(fac).error(init) * 2  # Loss is 0.5r^2
+                r2max = max(r2max, error)
+
+            if self._kernel_ == Kernel.GemanMcClure:
+                self._mu_ = 2*r2max/self._kernel_param_**2
+            elif self._kernel_ == Kernel.TLS:
+                self._mu_ = \
+                    self._kernel_param_**2 / (2*r2max-self._kernel_param_**2)
+
         # TODO: No need to freeze if we know the correct penalty
         # Freeze the penalty term for outlier measurements
         # to avoid their penalty values exaggerating the joint loss
@@ -110,11 +126,6 @@ class DCCSOptimizer(object):
         # Initial JOINT loss
         self._loss_ = \
             self._graph_.error(init) + sum(self._penalty_.values())
-        # Initial previous JOINT loss (loss*1.2 to pass the convergence test)
-        self._prev_loss_ = self._loss_ * 1.2
-
-        # Number of iterations
-        self._iter_ = 0
 
     def readKernelParam(self, kernel, kernel_param):
         """
@@ -157,9 +168,10 @@ class DCCSOptimizer(object):
         elif self._kernel_ == Kernel.L1:
             return 1/2*np.sum(scale / (self._kernel_param_**2))
         elif self._kernel_ == Kernel.GemanMcClure:
-            return 1/2*np.sum(
-                (self._kernel_param_ * (1/np.sqrt(scale + 1e-20) - 1)**2)
-            )
+            penalty = (self._kernel_param_ * (1/np.sqrt(scale + 1e-20) - 1))**2
+            if self._GNC_:
+                penalty *= self._mu_
+            return 1/2*np.sum(penalty)
 
     def updatePenalty(self):
         """
@@ -172,6 +184,19 @@ class DCCSOptimizer(object):
             for fac in self._factors2rescale_
             if not self._freeze_[fac]
         }
+
+    def updateMu(self):
+        """
+        Update the GNC control parameter mu and return True if mu converges
+        @return muConverged: [bool] Whether we have recovered the original cost
+        """
+        assert(self._GNC_), "Error: Calling mu update when GNC is set as False"
+        if self._kernel_ == Kernel.GemanMcClure:
+            self._mu_ /= 1.4
+            return self._mu_ <= 1.0
+        elif self._kernel_ == Kernel.TLS:
+            self._mu_ *= 1.4
+            return self._mu_ >= 100
 
     def rescaleCovariances(self):
         """
@@ -198,9 +223,10 @@ class DCCSOptimizer(object):
                 else:
                     self._scale_[fac] = 1e22 * np.ones(size)
             elif self._kernel_ == Kernel.GemanMcClure:
-                self._scale_[fac] = (
-                    1 + (whitenedError / self._kernel_param_)**2
-                )**2
+                scale = 1 + whitenedError**2 / self._kernel_param_**2
+                if self._GNC_:
+                    scale /= self._mu_
+                self._scale_[fac] = scale**2
 
             # Freeze the penalty value for outliers
             if self._kernel_ in [Kernel.L1]:
@@ -269,33 +295,38 @@ class DCCSOptimizer(object):
         Optimize by alternating minimization
         @return result: [gtsam.Values] Optimized state variables
         """
-        while not self.isConverged():
-            # STEP 1: Solve standard least-squares optimization w/ LM algorithm
-            params = gtsam.LevenbergMarquardtParams()
-            if self._verbose_:
-                params.setVerbosity("ERROR")
-            self._LM_ = gtsam.LevenbergMarquardtOptimizer(
-                self._graph_, self._result_, params
-            )
-            # Optimize
-            self._result_ = self._LM_.optimize()
-            # Update joint loss
-            self._prev_loss_ = self._loss_
-            # Update the inlier measurements' penalty values
-            self.updatePenalty()
-            # Update the joint loss
-            self._loss_ = self._graph_.error(self._result_) + \
-                sum(self._penalty_.values())
-            # Number of iterations
-            self._iter_ += 1
-
-            # STEP 2: Rescale the factor covariances
-            self.rescaleCovariances()
-            self.rebuildGraph()
-            if self._verbose_:
-                print(
-                    f"Joint loss at iteration {self._iter_}: {self._loss_}"
+        while True:
+            self._prev_loss_ = self._loss_ * 1.2
+            self._iter_ = 0
+            while not self.isConverged():
+                # STEP 1: Solve standard least-squares optimization w/ LM alg.
+                params = gtsam.LevenbergMarquardtParams()
+                if self._verbose_:
+                    params.setVerbosity("ERROR")
+                self._LM_ = gtsam.LevenbergMarquardtOptimizer(
+                    self._graph_, self._result_, params
                 )
+                # Optimize
+                self._result_ = self._LM_.optimize()
+                # Update joint loss
+                self._prev_loss_ = self._loss_
+                # Update the inlier measurements' penalty values
+                self.updatePenalty()
+                # Update the joint loss
+                self._loss_ = self._graph_.error(self._result_) + \
+                    sum(self._penalty_.values())
+                # Number of iterations
+                self._iter_ += 1
+
+                # STEP 2: Rescale the factor covariances
+                self.rescaleCovariances()
+                self.rebuildGraph()
+                if self._verbose_:
+                    print(
+                        f"Joint loss at iteration {self._iter_}: {self._loss_}"
+                    )
+            if not self._GNC_ or self.updateMu():
+                break
         return self._result_
 
 
@@ -311,6 +342,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Print?"
     )
+    parser.add_argument(
+        "--GNC", "-G", action="store_true", help="use GNC?"
+    )
     args = parser.parse_args()
 
     # A unit test: a landmark is observed from the 4 vertices of a square
@@ -320,31 +354,31 @@ if __name__ == "__main__":
 
     # Odometry factors
     odom1 = gtsam.BetweenFactorPose2(
-        1, 2, gtsam.Pose2(2, 0, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.01)
+        1, 2, gtsam.Pose2(2, 0, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     odom2 = gtsam.BetweenFactorPose2(
-        2, 3, gtsam.Pose2(0, 2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.01)
+        2, 3, gtsam.Pose2(0, 2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     odom3 = gtsam.BetweenFactorPose2(
-        3, 4, gtsam.Pose2(-2, 0, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.01)
+        3, 4, gtsam.Pose2(-2, 0, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     odom4 = gtsam.BetweenFactorPose2(
-        4, 1, gtsam.Pose2(0, -2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.01)
+        4, 1, gtsam.Pose2(0, -2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
 
     # Landmark pose prediction factors
     pred1 = gtsam.BetweenFactorPose2(
-        1, 0, gtsam.Pose2(1, 1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.5)
+        1, 0, gtsam.Pose2(1, 1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     pred2 = gtsam.BetweenFactorPose2(
-        2, 0, gtsam.Pose2(-1, 1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.5)
+        2, 0, gtsam.Pose2(-1, 1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     pred3 = gtsam.BetweenFactorPose2(
-        3, 0, gtsam.Pose2(-1, -1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.5)
+        3, 0, gtsam.Pose2(-1, -1, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
     # Outlier
     pred4 = gtsam.BetweenFactorPose2(
-        4, 0, gtsam.Pose2(2, 2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.5)
+        4, 0, gtsam.Pose2(2, 2, 0), gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
     )
 
     # Prior factor on the first pose
@@ -373,7 +407,7 @@ if __name__ == "__main__":
 
     dccs_optimizer = DCCSOptimizer(
         graph, init, args.kernel, args.kernel_param, factor2rescale,
-        verbose=args.verbose
+        GNC=args.GNC, verbose=args.verbose
     )
     dccs_optimizer.optimize()
     print(dccs_optimizer._result_)
