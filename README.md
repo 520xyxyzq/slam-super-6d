@@ -70,6 +70,16 @@ Check out the [experiment](experiments/ycbv/) folder for more details.
     <!-- <img src="https://drive.google.com/uc?export=view&id=164MzFQubQy-YUjDYhjq-R3KpF7Aor86J" width="400"> -->
 </p>
 
+## Installing
+
+Create a [conda](https://www.anaconda.com/products/individual) environment.
+
+```
+cd /path/to/slam-super-6d
+conda env create -f environment.yml
+```
+
+
 ## Developing
 
 We're using [pre-commit](https://pre-commit.com/) for automatic linting. To install `pre-commit` run:

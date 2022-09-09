@@ -1,0 +1,25 @@
+name: slam-super-6d
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - cudatoolkit
+  - pip
+  - python=3.6.9
+  - pytorch
+  - torchvision
+  - pip:
+    - albumentations==1.2.1
+    - configparser==5.0.2
+    - evo==1.15.0
+    - gtsam==4.1.1
+    - horovod==0.25.0
+    - matplotlib==3.3.4
+    - numpy>=1.15
+    - opencv_python==4.3.0.36
+    - Pillow
+    - pyquaternion==0.9.9
+    - pyrr==0.10.3
+    - scipy==1.5.4
+    - tensorboardX==2.5.1
+    - transforms3d==0.3.1
