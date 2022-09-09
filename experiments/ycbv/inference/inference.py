@@ -418,4 +418,6 @@ if __name__ == "__main__":
 
     # Save as tum format
     tum = np.array(tum)
-    np.savetxt(opt.outf + seq + ".txt", tum, fmt=["%.1f"] + ["%.12f"] * 7)
+    np.savetxt(
+        opt.outf + "/" + seq + ".txt", tum, fmt=["%.1f"] + ["%.12f"] * 7
+    )
