@@ -79,6 +79,7 @@ cd /path/to/slam-super-6d
 conda env create -f environment.yml
 ```
 
+More detailed user guide coming soon...
 
 ## Developing
 
