@@ -79,7 +79,7 @@ cd /path/to/slam-super-6d
 conda env create -f environment.yml
 ```
 
-### Test out the DOPE pose estimator before and after self-training on the YCB-v dataset
+### Testing the DOPE model before and after self-training on the YCB-v dataset
 - Download a DOPE weights file from [here](https://drive.google.com/drive/folders/1fkMdr9Y8ls2EQTLtDmy8dULPHMEHWKKs?usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training.)
 - Change [this line](https://github.com/520xyxyzq/slam-super-6d/blob/645701adaf80a273c10adb863878d8f6af228f61/experiments/ycbv/inference/config_inference/config_pose.yaml#L11) to point to the weights file.
 - Save the test images to `/path/to/image/folder/`.
@@ -106,3 +106,7 @@ To get started using `pre-commit` with this codebase, from the project repo run:
 pre-commit install
 ```
 Now, each time you `git add` new files and try to `git commit` your code will automatically be run through a variety of linters. You won't be able to commit anything until the linters are happy with your code.
+
+## Acknowledgement
+
+Thanks to Jonathan Tremblay for suggestions on DOPE network training and synthetic data generation.
