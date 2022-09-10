@@ -79,16 +79,17 @@ cd /path/to/slam-super-6d
 conda env create -f environment.yml
 ```
 
-### Test out the DOPE pose estimator before and after self-training on the YCB-v dataset:
-- Download a DOPE weights file from [here](https://drive.google.com/drive/folders/1fkMdr9Y8ls2EQTLtDmy8dULPHMEHWKKs?usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training)
+### Test out the DOPE pose estimator before and after self-training on the YCB-v dataset
+- Download a DOPE weights file from [here](https://drive.google.com/drive/folders/1fkMdr9Y8ls2EQTLtDmy8dULPHMEHWKKs?usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training.)
 - Change [this line](https://github.com/520xyxyzq/slam-super-6d/blob/645701adaf80a273c10adb863878d8f6af228f61/experiments/ycbv/inference/config_inference/config_pose.yaml#L11) to point to the weights file.
-- Save the test images to `/path/to/image/folder/`
+- Save the test images to `/path/to/image/folder/`.
 - Run
 ```
 cd /path/to/slam-super-6d
 python3 experiments/ycbv/inference/inference.py --data /path/to/image/folder/ --outf /output/folder/
 ```
-- Get the object pose preditions saved in the TUM format at /output/folder/0000.txt
+- Get the object pose preditions saved in the TUM format at `/output/folder/0000.txt`.
+- Please check out the [DOPE](https://github.com/NVlabs/Deep_Object_Pose) Github repo for more [details](https://github.com/NVlabs/Deep_Object_Pose/tree/master/scripts/train2) on how to train/run DOPE networks.
 
 ### More detailed user guide coming soon...
 
