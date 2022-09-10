@@ -13,7 +13,6 @@ dependencies:
     - configparser==5.0.2
     - evo==1.15.0
     - gtsam==4.1.1
-    - horovod==0.25.0
     - matplotlib==3.3.4
     - numpy>=1.15
     - opencv_python==4.3.0.36
