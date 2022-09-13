@@ -369,9 +369,12 @@ if __name__ == "__main__":
 
     if opt.data is not None:
         videopath = opt.data
-        for j in sorted(glob.glob(videopath+"/*.png")):
+        for j in sorted(
+            glob.glob(videopath+"/*.png")+glob.glob(videopath+"/*.jpg")
+        ):
             imgs.append(j)
             imgsname.append(j.replace(videopath, "").replace("/", ""))
+        assert len(imgs) != 0, f"Error: no valid image (png/jpg) in {opt.data}"
     else:
         if not opt.realsense:
             cap = cv2.VideoCapture(0)
