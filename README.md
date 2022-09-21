@@ -15,7 +15,7 @@ The two most important features of this work
 
 ## Results
 
-We combine object pose prediction with camera odometry to build object-level scene representations.
+We combine object pose prediction with camera odometry to infer object-level 3D scene geometry.
 We leverage the consistent state estimates to pseudo-label training images and fine-tune the pose estimator.
 
 ### Per-frame object pose prediction before and after self-training
