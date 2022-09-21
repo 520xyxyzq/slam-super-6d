@@ -65,9 +65,7 @@ Check out the [experiment](experiments/ycbv/) folder for more details.
 
 <p align="middle">
     <img src="media/YCB-v-test.gif" width="400">
-    <img src="media/YCB-v-test-slam.gif" width="400">
-    <!-- <img src="https://drive.google.com/uc?export=view&id=1hCG_yahIi0OuEeuma-M1SOw3QnW9C-DA" width="400"> -->
-    <!-- <img src="https://drive.google.com/uc?export=view&id=164MzFQubQy-YUjDYhjq-R3KpF7Aor86J" width="400"> -->
+    <img src="media/robot-test.gif" width="400">
 </p>
 
 ## Installing
