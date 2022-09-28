@@ -170,7 +170,7 @@ class PseudoLabeler(object):
         if kernel == Kernel.L2:
             pass
         elif kernel == Kernel.L1:
-            assert(False), "Error: L1 kernel not implemented yet in GTSAM, " +\
+            assert False, "Error: L1 kernel not implemented yet in GTSAM, " +\
                 "but our DCCS optimizer supports L1 kernel"
         elif kernel == Kernel.DCE:
             pass
@@ -204,7 +204,7 @@ class PseudoLabeler(object):
                 robust_noise_model = \
                     gtsam.noiseModel.Robust(robust, robust_noise_model)
         else:
-            assert(False), "Error: Unknown robust kernel type"
+            assert False, "Error: Unknown robust kernel type"
 
         return robust_noise_model
 
@@ -214,7 +214,7 @@ class PseudoLabeler(object):
         @param poses: [list of gtsam.Pose3] Poses to average
         @return avg_pose: [gtsam.Pose3] Average pose
         """
-        assert(type(poses) is list and len(poses) > 0), \
+        assert type(poses) is list and len(poses) > 0, \
             "Error: Pose list is empty"
         t = np.mean(np.array([pose.translation() for pose in poses]), axis=0)
         quats = np.array([pose.rotation().quaternion() for pose in poses])
@@ -234,7 +234,7 @@ class PseudoLabeler(object):
         @return result: [gtsam.Values] Optimization result
         """
         # Make sure solve is called after buildGraph()
-        assert(hasattr(self, "_fg_")), \
+        assert hasattr(self, "_fg_"), \
             "Error: No factor graph yet, please build graph before solving it"
 
         if optimizer == Optimizer.GaussNewton:
@@ -267,10 +267,10 @@ class PseudoLabeler(object):
             )
         elif optimizer in [Optimizer.GncGaussNewtonGM, Optimizer.GncLMGM]:
             # TODO(any): keep an eye on this
-            assert(False), \
+            assert False, \
                 "Error: GTSAM Python GNC optim w/ GM loss under development"
         else:
-            assert(False), "Error: Unknown optimizer type"
+            assert False, "Error: Unknown optimizer type"
 
         self._result_ = optim.optimize()
 
@@ -308,7 +308,7 @@ class PseudoLabeler(object):
             # NOTE: The joint loss has an extra term (regularization)
             # TODO: if bootstrap, no self._outlier_ at this step in 1st iter
             if type(det_noise_new) == dict:
-                assert(hasattr(self, "_outliers_")), \
+                assert hasattr(self, "_outliers_"), \
                     "Error: Outliers not labeled yet!"
                 # Regularization doesn't have outlier terms
                 if not kernel == Kernel.DCE:
@@ -428,8 +428,8 @@ class PseudoLabeler(object):
         @return noise_models: [dict{tuple:array}] optimal noise model
         """
         # TODO(zq): Guard against 0 errors
-        assert(len(errors) > 0), "Error: Factor errors empty!"
-        assert(hasattr(self, "_outliers_")), "Error: Outliers not labeled!"
+        assert len(errors) > 0, "Error: Factor errors empty!"
+        assert hasattr(self, "_outliers_"), "Error: Outliers not labeled!"
         if kernel == Kernel.L2:
             noise_models = {}
             for (k, e) in errors.items():
@@ -524,7 +524,7 @@ class PseudoLabeler(object):
                 elif mode == LabelingMode.Hybrid:
                     # For hard examples, use SLAM result if cos_score > thresh
                     if stamp not in dets or stamp in self._outliers_[ii]:
-                        score = self._pose_eval_.simScore(
+                        score = self._pose_eval_[ii].simScore(
                             jj, rel_obj_pose, scoreThreshPGO
                         )
                         if score:
@@ -535,10 +535,10 @@ class PseudoLabeler(object):
                         continue
                     # For inlier detections, use SLAM result if score higher
                     else:
-                        score = self._pose_eval_.simScore(
+                        score = self._pose_eval_[ii].simScore(
                             jj, rel_obj_pose, scoreThreshPGO
                         )
-                        score_in = self._pose_eval_.simScore(
+                        score_in = self._pose_eval_[ii].simScore(
                             jj, dets[stamp], scoreThreshInlier
                         )
                         # If max(score, score_inlier) < thresh, don't label
@@ -562,13 +562,13 @@ class PseudoLabeler(object):
                     if stamp not in dets:
                         continue
                     # NOTE: 0.5 was used in Deng et al. 2020
-                    score = self._pose_eval_.simScore(
+                    score = self._pose_eval_[ii].simScore(
                         jj, dets[stamp], 0.5
                     )
                     if score:
                         obj_dets[stamp] = dets[stamp]
                 else:
-                    assert(False), "Error: Unknown pseudo labeling mode!"
+                    assert False, "Error: Unknown pseudo labeling mode!"
             self._plabels_.append(obj_dets)
 
     def isInImage(self, rel_obj_pose):
@@ -605,7 +605,7 @@ class PseudoLabeler(object):
         # NOTE: We should not use the det_noise after joint optimization to
         # label outliers. The outliers are downweighted and thus will pass
         # the chi2 test.
-        assert(not type(det_std) == dict), \
+        assert not type(det_std) == dict, \
             "Error: We should always use a fixed std for chi2 test"
         det_noise = readNoiseModel(det_std) if \
             type(det_std) in (np.ndarray, list) else det_std
@@ -636,7 +636,7 @@ class PseudoLabeler(object):
         @param det_std: [array, noiseModel] Detection noise stds for chi2 test
         @param mode: [int] Pseudo labeling mode: SLAM(0) Inlier(1) Hybrid(2)
         PoseEval(3)
-        @param pose_eval: [PoseEval or None] Pose evaluation module
+        @param pose_eval: [list or None] Pose evaluation modules
         @param scoreThreshPGO: [float] Cosine similarity score threshold for
         PGO-generated labels
         @param scoreThreshInlier: [float] Cosine similarity score threshold for
@@ -653,13 +653,16 @@ class PseudoLabeler(object):
             intrinsics[0], intrinsics[1], intrinsics[4], intrinsics[2],
             intrinsics[3]
         )
-        assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
+        assert os.path.isdir(out), "Error: Target folder doesn't exist!"
         # Make sure saveData is called after self.solve()
-        assert(hasattr(self, "_result_")), \
+        assert hasattr(self, "_result_"), \
             "Error: No PGO results yet, please solve PGO before saving data"
         if mode in [LabelingMode.Hybrid, LabelingMode.PoseEval]:
-            assert(pose_eval is not None), \
+            assert pose_eval is not None, \
                 "Error: Pose evaluation is None, check labeling mode and input"
+            assert len(pose_eval) == len(self._dets_), \
+                f"Error: #PoseEval modules{len(pose_eval)}!= #Pred files" + \
+                f"{len(self._dets_)}"
             self._pose_eval_ = pose_eval
         # Use chi2 test to find outliers
         errors = self.getFactorErrors(self._fg_, self._result_)
@@ -726,14 +729,14 @@ class PseudoLabeler(object):
         @param verbose: [bool] Print error stats?
         @param save: [bool] Save errors to file?
         """
-        assert(hasattr(self, "_plabels_")), \
+        assert hasattr(self, "_plabels_"), \
             "Error: No pseudo labels yet, generate data before error analysis"
         if gt_dets is None:
             printWarn(
                 "WARN: Ground truth det files not passed, errors not computed"
             )
             return
-        assert(len(gt_dets) == len(self._dets_)), \
+        assert len(gt_dets) == len(self._dets_), \
             "Error: #Ground truth detection files != #detection files"
         for ii, gt_det in enumerate(gt_dets):
             if len(self._plabels_[ii]) == 0:
@@ -765,7 +768,7 @@ class PseudoLabeler(object):
         @param save: [bool] Save the figure?
         @param out: [string] Where to save the figure
         """
-        assert(hasattr(self, "_result_")), \
+        assert hasattr(self, "_result_"), \
             "Error: No PGO results yet, please solve PGO before plotting"
         it = 0
         while it != len(self._odom_):
@@ -823,8 +826,8 @@ class PseudoLabeler(object):
         axes.view_init(azim=-90, elev=-45)
         axes.legend()
         if save:
-            assert(out is not None), "Error: Figure save path unspecified"
-            assert(os.path.isdir(out)), "Error: Target folder doesn't exist!"
+            assert out is not None, "Error: Figure save path unspecified"
+            assert os.path.isdir(out), "Error: Target folder doesn't exist!"
             plt.savefig(out + self._det_fnames_[0][:-4] + ".png", dpi=200)
         else:
             plt.show()
@@ -909,8 +912,8 @@ if __name__ == '__main__':
         default="/media/ziqi/LENOVO_USB_HDD/data/YCB-V/data/0002/*-color.png"
     )
     parser.add_argument(
-        "--obj", "-obj", type=str, default="010_potted_meat_can",
-        help="Object name (No _16k!!)"
+        "--obj", "-obj", nargs="+", type=str, default=["010_potted_meat_can"],
+        help="YCB object names (No _16k!!)"
     )
     parser.add_argument(
         "--ckpt", "-cp", type=str, help="Path to the AAE checkpoint folder",
@@ -967,7 +970,7 @@ if __name__ == '__main__':
         intrinsics = args.intrinsics
 
     pl = PseudoLabeler(args.odom, args.dets)
-    assert(len(pl._dets_) > 0), "No Object detection in the sequence"
+    assert len(pl._dets_) > 0, "No Object detection in the sequence"
     if args.joint:
         pl.solveByIter(
             args.prior_noise, args.odom_noise, args.det_noise, args.kernel,
@@ -979,13 +982,10 @@ if __name__ == '__main__':
         pl.solve(args.optim, verbose=args.verbose)
 
     # Instantiate pose evaluation module if labeling mode is "Hybrid"
-    pose_eval = None
+    pose_evals = None
     if args.mode in [LabelingMode.Hybrid, LabelingMode.PoseEval]:
-        codebook = args.codebook if args.codebook[-1] == "/" \
-            else args.codebook + "/"
-        ckpt = args.ckpt if args.ckpt[-1] == "/" else args.ckpt + "/"
-        codebook += args.obj + ".pth"
-        ckpt += args.obj + ".pth"
+        assert len(args.obj) == len(args.dets), f"Error: {len(args.obj)}"\
+            + f" obj name(s) but {len(args.dets)} pred files"
         import json
 
         # Open _ycb_original.json to load models' static transformations
@@ -993,21 +993,26 @@ if __name__ == '__main__':
             transforms = json.load(yj)
         # Names of all YCB objects
         class_names = transforms["exported_object_classes"]
-        # Find index of the current object
-        obj_id = class_names.index(args.obj + "_16k")
-        # Load fixed transform for the obj (YCB to DOPE defined coordinate)
-        # NOTE: this is the transform of the original frame wrt the new frame
-        obj_transf = \
-            transforms["exported_objects"][obj_id]["fixed_model_transform"]
-        obj_transf = np.array(obj_transf).T
-        obj_transf[:3, :] /= 100  # [cm] to [m]
-        pose_eval = PoseEval(
-            args.imgs, args.obj, ckpt, codebook, intrinsics, obj_transf
-        )
+        pose_evals = []
+        for obj in args.obj:
+            # Find index of the current object
+            obj_id = class_names.index(obj + "_16k")
+            # Load fixed transform for the obj (YCB to DOPE defined coordinate)
+            # NOTE: It's the transform of the original frame wrt the new frame
+            obj_transf = \
+                transforms["exported_objects"][obj_id]["fixed_model_transform"]
+            obj_transf = np.array(obj_transf).T
+            obj_transf[:3, :] /= 100  # [cm] to [m]
+            # Read the codebooks and checkpoints of target objects
+            codebook = args.codebook + f"/{obj}.pth"
+            ckpt = args.ckpt + f"/{obj}.pth"
+            pose_evals.append(PoseEval(
+                args.imgs, obj, ckpt, codebook, intrinsics, obj_transf
+            ))
 
     pl.saveData(
         target_folder, args.img_dim, intrinsics, det_std=args.det_noise,
-        mode=args.mode, pose_eval=pose_eval, scoreThreshPGO=args.spgo,
+        mode=args.mode, pose_eval=pose_evals, scoreThreshPGO=args.spgo,
         scoreThreshInlier=args.sin, detRateThresh=args.detthresh,
         outlierRateThresh=args.outthresh, verbose=args.verbose
     )
