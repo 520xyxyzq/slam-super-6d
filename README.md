@@ -34,7 +34,7 @@ cd /path/to/slam-super-6d
 conda env create -f environment.yml
 ```
 
-### Testing the DOPE model before and after self-training on the YCB-v dataset
+### Test the DOPE model before and after self-training on the YCB-v dataset
 - Download a DOPE weights file from [here](https://drive.google.com/drive/folders/1fkMdr9Y8ls2EQTLtDmy8dULPHMEHWKKs?usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training.)
 - Change [this line](https://github.com/520xyxyzq/slam-super-6d/blob/645701adaf80a273c10adb863878d8f6af228f61/experiments/ycbv/inference/config_inference/config_pose.yaml#L11) to point to the weights file.
 - Save the test images to `/path/to/image/folder/`.
@@ -43,8 +43,26 @@ conda env create -f environment.yml
 cd /path/to/slam-super-6d
 python3 experiments/ycbv/inference/inference.py --data /path/to/image/folder/ --outf /output/folder/
 ```
-- Get the object pose preditions saved in the TUM format at `/output/folder/0000.txt`.
+- Get the object pose preditions saved in the [TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats) at `/output/folder/0000.txt`.
 - Please check out the [DOPE](https://github.com/NVlabs/Deep_Object_Pose) Github repo for more [details](https://github.com/NVlabs/Deep_Object_Pose/tree/master/scripts/train2) on how to train/run DOPE networks.
+
+### Test the pseudo labeling module
+Given a sequence of unlabeled images, how to generate pseudo labels (pseudo ground truth poses)?
+- Step 1: Choose your favorite pose estimator and camera odometry pipeline.
+- Step 2: Predict the object poses in the images and save them to \${obj_1}.txt, \${obj_2}.txt, ..., \${obj_n}.txt in TUM format.
+- Step 3: Estimate camera motion and save the noisy pose measurements to ${odom}.txt in TUM format.
+- Step 4: Generate pseudo ground truth poses
+    - If the objects are from the YCB video dataset, [download](https://drive.google.com/file/d/1LGH1N1F8BRDkym75Du02R6qvDat7_40T/view?usp=sharing) their PoseRBPF auto-encoder model weights and codebooks to [this](src/checkpoints/) and [this](src/codebooks/) folder, and use the _Hybrid_ model for pseudo-labeling:
+    ```
+    cd /path/to/slam-super-6d
+    python3 src/pseudo_labeler.py --joint --optim 1 --mode 2 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --obj ${obj_1_name} ${obj_2_name} ... ${obj_n_name} --imgs "/path/to/unlabeled/images/*.png" --intrinsics ${fx} ${fy} ${cx} ${cy} ${s} --out ${output}
+    ```
+    - Otherwise, use the _Inlier_ labeling mode, which disables the rendered-to-real RoI comparison:
+    ```
+    cd /path/to/slam-super-6d
+    python3 src/pseudo_labeler.py --joint --mode 1 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --out ${output}
+    ```
+- Step 5: Get the pseudo ground truth poses at \${output}/obj1.txt, \${output}/obj2.txt, ..., \${output}/objn.txt in TUM format
 
 ### More detailed user guide coming soon...
 
