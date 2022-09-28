@@ -49,10 +49,10 @@ python3 experiments/ycbv/inference/inference.py --data /path/to/image/folder/ --
 ### Test the pseudo labeling module
 Given a sequence of unlabeled images, how to generate pseudo labels (pseudo ground truth poses)?
 - Step 1: Choose your favorite pose estimator and camera odometry pipeline.
-- Step 2: Predict the object poses in the images and save them to \${obj_1}.txt, \${obj_2}.txt, ..., \${obj_n}.txt in TUM format.
+- Step 2: Predict the object poses in the images and save them to &dollar;{obj_1}.txt, &dollar;{obj_2}.txt, ..., &dollar;{obj_n}.txt in TUM format.
 - Step 3: Estimate camera motion and save the noisy pose measurements to ${odom}.txt in TUM format.
 - Step 4: Generate pseudo ground truth poses
-    - If the objects are from the YCB video dataset, [download](https://drive.google.com/file/d/1LGH1N1F8BRDkym75Du02R6qvDat7_40T/view?usp=sharing) their PoseRBPF auto-encoder model weights and codebooks to [this](src/checkpoints/) and [this](src/codebooks/) folder, and use the _Hybrid_ model for pseudo-labeling:
+    - If the objects are from the YCB video dataset, [download](https://drive.google.com/file/d/1LGH1N1F8BRDkym75Du02R6qvDat7_40T/view?usp=sharing) their [PoseRBPF](https://github.com/NVlabs/PoseRBPF) auto-encoder model weights and codebooks to [this](src/checkpoints/) and [this](src/codebooks/) folder, and use the _Hybrid_ mode for pseudo-labeling:
     ```
     cd /path/to/slam-super-6d
     python3 src/pseudo_labeler.py --joint --optim 1 --mode 2 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --obj ${obj_1_name} ${obj_2_name} ... ${obj_n_name} --imgs "/path/to/unlabeled/images/*.png" --intrinsics ${fx} ${fy} ${cx} ${cy} ${s} --out ${output}
@@ -62,7 +62,7 @@ Given a sequence of unlabeled images, how to generate pseudo labels (pseudo grou
     cd /path/to/slam-super-6d
     python3 src/pseudo_labeler.py --joint --mode 1 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --out ${output}
     ```
-- Step 5: Get the pseudo ground truth poses at \${output}/obj1.txt, \${output}/obj2.txt, ..., \${output}/objn.txt in TUM format
+- Step 5: Get the pseudo ground truth poses at &dollar;{output}/obj1.txt, &dollar;{output}/obj2.txt, ..., &dollar;{output}/objn.txt in TUM format
 
 ### More detailed user guide coming soon...
 
