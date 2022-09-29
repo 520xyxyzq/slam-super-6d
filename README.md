@@ -64,13 +64,13 @@ Given a sequence of unlabeled images, how to generate pseudo labels (pseudo grou
     ```
 - Step 5: Get the pseudo ground truth poses at `${output}/obj1.txt`, `${output}/obj2.txt`, ..., `${output}/objn.txt` in [TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats).
 
-As an example, you should be able to get [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Hybrid_1/0002_obj0.txt) file (up to floating point discrepancies) if you run:
+As an example, you should be able to get the [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Hybrid_1/0002_obj0.txt) file (up to floating point discrepancies) if you run (_Hybrid_ pseudo-labeling):
 ```
 cd /path/to/slam-super-6d
 python3 src/pseudo_labeler.py --joint --optim 1 --mode 2 --dets ./experiments/ycbv/inference/010_potted_meat_can_16k/Initial/0002.txt --odom ./experiments/ycbv/odom/results/0002.txt --obj 010_potted_meat_can --imgs "/path/to/YCB-V/data/0002/*-color.png" --out /output/folder/
 ```
 
-And get [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Inlier_1/0002_obj0.txt) file if you run:
+And get [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Inlier_1/0002_obj0.txt) file if you run (_Inlier_ pseudo-labeling):
 ```
 cd /path/to/slam-super-6d
 python3 src/pseudo_labeler.py --joint --optim 1 --mode 1 --dets ./experiments/ycbv/inference/010_potted_meat_can_16k/Initial/0002.txt --odom ./experiments/ycbv/odom/results/0002.txt --out /output/folder/
