@@ -49,8 +49,8 @@ python3 experiments/ycbv/inference/inference.py --data /path/to/image/folder/ --
 ### Test the pseudo labeling module
 Given a sequence of unlabeled images, how to generate pseudo labels (pseudo ground truth poses)?
 - Step 1: Choose your favorite pose estimator and camera odometry pipeline.
-- Step 2: Predict the object poses in the images and save them to `${obj_1}.txt`, `${obj_2}.txt`, ..., `${obj_n}.txt` in TUM format.
-- Step 3: Estimate camera motion and save the noisy pose measurements to `${odom}.txt` in TUM format.
+- Step 2: Predict the object poses in the images and save them to `${obj_1}.txt`, `${obj_2}.txt`, ..., `${obj_n}.txt` in [TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats). (If the estimator failed for a certain frame, use `timestamp`+7 `0`s for the corresponding line.)
+- Step 3: Estimate camera motion and save the noisy pose measurements to `${odom}.txt` in [TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats).
 - Step 4: Generate pseudo ground truth poses:
     - If the objects are from the [YCB video dataset](https://rse-lab.cs.washington.edu/projects/posecnn/), [download](https://drive.google.com/file/d/1LGH1N1F8BRDkym75Du02R6qvDat7_40T/view?usp=sharing) their [PoseRBPF](https://github.com/NVlabs/PoseRBPF) auto-encoder model weights and codebooks to [this](src/checkpoints/) and [this](src/codebooks/) folder, and use the _Hybrid_ mode for pseudo-labeling:
     ```
@@ -60,9 +60,22 @@ Given a sequence of unlabeled images, how to generate pseudo labels (pseudo grou
     - Otherwise, use the _Inlier_ labeling mode, which disables the rendered-to-real RoI comparison:
     ```
     cd /path/to/slam-super-6d
-    python3 src/pseudo_labeler.py --joint --mode 1 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --out ${output}
+    python3 src/pseudo_labeler.py --joint --optim 1 --mode 1 --dets ${obj_1}.txt ${obj_2}.txt ... ${obj_n}.txt --odom ${odom}.txt --out ${output}
     ```
 - Step 5: Get the pseudo ground truth poses at `${output}/obj1.txt`, `${output}/obj2.txt`, ..., `${output}/objn.txt` in [TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats).
+
+As an example, you should be able to get [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Hybrid_1/0002_obj0.txt) file (up to floating point discrepancies) if you run:
+```
+cd /path/to/slam-super-6d
+python3 src/pseudo_labeler.py --joint --optim 1 --mode 2 --dets ./experiments/ycbv/inference/010_potted_meat_can_16k/Initial/0002.txt --odom ./experiments/ycbv/odom/results/0002.txt --obj 010_potted_meat_can --imgs "/path/to/YCB-V/data/0002/*-color.png" --out /output/folder/
+```
+
+And get [this](experiments/ycbv/pseudo_labels/010_potted_meat_can_16k/Inlier_1/0002_obj0.txt) file if you run:
+```
+cd /path/to/slam-super-6d
+python3 src/pseudo_labeler.py --joint --optim 1 --mode 1 --dets ./experiments/ycbv/inference/010_potted_meat_can_16k/Initial/0002.txt --odom ./experiments/ycbv/odom/results/0002.txt --out /output/folder/
+```
+
 
 ### More detailed user guide coming soon...
 
