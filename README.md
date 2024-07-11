@@ -35,7 +35,7 @@ conda env create -f environment.yml
 ```
 
 ### Test the DOPE model before and after self-training on the YCB-v dataset
-- Download a DOPE weights file from [here](https://drive.google.com/drive/folders/1fkMdr9Y8ls2EQTLtDmy8dULPHMEHWKKs?usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training.)
+- Download a DOPE weights file from [here](https://drive.google.com/drive/folders/0B20zFgsL_Sorfm12bzdqdk9LUVJVSVVvQUJ3RDBmRms2SEEwM0xBbTNxdUptUlF6RGdtdEU?resourcekey=0-tjXxtBBZfyvGaZycR8Y4VA&usp=sharing) to your favorite folder. (Initial: before self-training; Self-trained: after self-training; Supervised: after supervised training.)
 - Change [this line](https://github.com/520xyxyzq/slam-super-6d/blob/645701adaf80a273c10adb863878d8f6af228f61/experiments/ycbv/inference/config_inference/config_pose.yaml#L11) to point to the weights file.
 - Save the test images to `/path/to/image/folder/`.
 - Run
